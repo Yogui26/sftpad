@@ -1,0 +1,19 @@
+# SFTPad — docker compose up -d --build
+services:
+  sftpad:
+    build: .
+    image: sftpad:latest
+    container_name: sftpad
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - TZ=Europe/Paris
+      - PUID=1000          # propriétaire des fichiers écrits dans /data
+      - PGID=1000
+      - UMASK=002
+      # - ADMIN_PASSWORD=changez-moi   # sinon, mot de passe choisi au premier lancement
+      # - AUTH=none                    # uniquement derrière un reverse proxy authentifié (Authelia…)
+    volumes:
+      - ./config:/config               # sites, identifiants chiffrés, file de transferts
+      - /srv/stockage:/data            # le côté « local » : NAS, disque, partages…

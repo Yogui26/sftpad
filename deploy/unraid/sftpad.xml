@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <TemplateURL>https://raw.githubusercontent.com/Yogui26/sftpad/main/deploy/unraid/sftpad.xml</TemplateURL>
+  <Name>SFTPad</Name>
+  <Repository>ghcr.io/yogui26/sftpad:latest</Repository>
+  <Registry/>
+  <Network>bridge</Network>
+  <Privileged>false</Privileged>
+  <Shell>sh</Shell>
+  <Support>https://github.com/Yogui26/sftpad/issues</Support>
+  <Project>https://github.com/Yogui26/sftpad</Project>
+  <Overview>Client SFTP web tactile et installable (PWA), inspiré de FileZilla. Double panneau local/distant, file de transferts côté serveur avec reprise, gestionnaire de sites aux identifiants chiffrés. Le côté « local » correspond au dossier monté sur /data (vos partages Unraid).</Overview>
+  <Category>Network:Other Tools:</Category>
+  <WebUI>http://[IP]:[PORT:8080]/</WebUI>
+  <Icon>https://raw.githubusercontent.com/Yogui26/sftpad/main/public/icons/icon-512.png</Icon>
+  <ExtraParams>--restart=unless-stopped</ExtraParams>
+  <Config Name="Interface web" Target="8080" Default="8080" Mode="tcp" Description="Port de l'interface web" Type="Port" Display="always" Required="true" Mask="false">8080</Config>
+  <Config Name="Configuration" Target="/config" Default="/mnt/user/appdata/sftpad" Mode="rw" Description="Sites, identifiants chiffrés, file de transferts" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/sftpad</Config>
+  <Config Name="Stockage local" Target="/data" Default="/mnt/user" Mode="rw" Description="Ce que SFTPad voit comme « local » (ex. /mnt/user pour tous les partages, ou un partage précis)" Type="Path" Display="always" Required="true" Mask="false">/mnt/user</Config>
+  <Config Name="PUID" Target="PUID" Default="99" Mode="" Description="Utilisateur propriétaire des fichiers téléchargés (99 = nobody)" Type="Variable" Display="advanced" Required="true" Mask="false">99</Config>
+  <Config Name="PGID" Target="PGID" Default="100" Mode="" Description="Groupe des fichiers téléchargés (100 = users)" Type="Variable" Display="advanced" Required="true" Mask="false">100</Config>
+  <Config Name="UMASK" Target="UMASK" Default="000" Mode="" Description="Masque des permissions des fichiers créés" Type="Variable" Display="advanced" Required="false" Mask="false">000</Config>
+  <Config Name="Fuseau horaire" Target="TZ" Default="Europe/Paris" Mode="" Description="" Type="Variable" Display="advanced" Required="false" Mask="false">Europe/Paris</Config>
+  <Config Name="Mot de passe admin" Target="ADMIN_PASSWORD" Default="" Mode="" Description="Facultatif. Vide = mot de passe choisi au premier lancement dans l'interface" Type="Variable" Display="always" Required="false" Mask="true"/>
+  <Config Name="Authentification" Target="AUTH" Default="" Mode="" Description="Mettre « none » UNIQUEMENT si l'accès est protégé par un reverse proxy authentifiant (Authelia, Authentik…)" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+</Container>
