@@ -121,6 +121,14 @@ Pour de gros envois depuis l'appareil, augmentez la taille maximale du corps de 
 Évitez d'exposer SFTPad directement sur Internet : il donne accès à vos fichiers et à vos serveurs. Un VPN (WireGuard, Tailscale)
 ou une authentification au niveau du proxy est recommandé.
 
+## Dépannage
+
+**« Écriture refusée » / `EACCES` en téléchargeant vers le local** : SFTPad écrit avec l'utilisateur `PUID:PGID`
+(99:100 = `nobody:users` sur Unraid). La racine de `/mnt/user` appartient à `root` : il faut entrer dans un
+**partage** avant de transférer. Si un partage refuse aussi l'écriture (créé par root), lancez
+**Tools → New Permissions** sur ce partage dans Unraid, ou corrigez `PUID`/`PGID`. L'utilisateur effectif
+s'affiche dans **Réglages → À propos**.
+
 ## Sauvegarde
 
 Tout l'état est dans `/config` : `sites.json` (secrets chiffrés), `secret.key` (clé de chiffrement — **sans elle les mots de passe

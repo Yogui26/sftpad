@@ -165,7 +165,7 @@ api.post('/auth/password', (req, res) => {
 });
 
 api.get('/info', async (req, res) => {
-  res.json({ version: pkg.version, dataDir: localfs.DATA_DIR, disk: await localfs.diskInfo(), settings: settings(), authDisabled: AUTH_DISABLED, envPassword: !!envPasswordHash });
+  res.json({ version: pkg.version, runAs: localfs.whoami(), dataDir: localfs.DATA_DIR, disk: await localfs.diskInfo(), settings: settings(), authDisabled: AUTH_DISABLED, envPassword: !!envPasswordHash });
 });
 
 api.put('/settings', (req, res) => {
@@ -453,7 +453,7 @@ api.post('/local/upload', async (req, res) => {
   await handleUpload(req, res, async (rel, stream) => {
     let v = localfs.virt(path.posix.join(base, rel));
     let real = localfs.real(v);
-    await fsp.mkdir(path.dirname(real), { recursive: true }).catch(localfs.mapErr);
+    await fsp.mkdir(path.dirname(real), { recursive: true }).catch((e) => { throw localfs.explainWrite(e, v); });
     if (fs.existsSync(real)) {
       if (policy === 'skip') { stream.resume(); return null; }
       if (policy === 'rename') {
@@ -471,7 +471,7 @@ api.post('/local/upload', async (req, res) => {
       ws.on('finish', resolve);
       req.on('aborted', () => { ws.destroy(); reject(new HttpError(499, 'Envoi interrompu')); });
       stream.pipe(ws);
-    }).catch(async (e) => { await fsp.rm(tmp, { force: true }); throw e.code ? localfs.mapErr(e) : e; });
+    }).catch(async (e) => { await fsp.rm(tmp, { force: true }).catch(() => {}); throw e.code ? localfs.explainWrite(e, v) : e; });
     await fsp.rename(tmp, real);
     if (settings().localFileMode) await fsp.chmod(real, parseInt(settings().localFileMode, 8)).catch(() => {});
     return v;

@@ -297,13 +297,13 @@ class TransferQueue {
     const d = this.decide(job, st.size, st.mtime * 1000, dst, (n) => fs.existsSync(require('path').join(dirReal, n)));
     if (d.action === 'skip') { job.done = job.size; return 'skipped'; }
     if (d.dst) { job.dst = localfs.virt(d.dst); job.name = rpath.basename(job.dst); real = localfs.real(job.dst); job.onExists = 'resume'; }
-    await fsp.mkdir(dirReal, { recursive: true }).catch(localfs.mapErr);
+    await fsp.mkdir(dirReal, { recursive: true }).catch((e) => { throw localfs.explainWrite(e, job.dst); });
     const onProg = this.progress(job);
     job.done = d.start;
     this.changed(job);
 
     await fastio.download(ch, job.src, real, { start: d.start, size: st.size, onProgress: onProg })
-      .catch((e) => { ctl.check(); throw sftpErr(e, job.src); });
+      .catch((e) => { ctl.check(); throw e.syscall ? localfs.explainWrite(e, job.dst) : sftpErr(e, job.src); });
     ctl.check();
     const mt = new Date(st.mtime * 1000);
     await fsp.utimes(real, mt, mt).catch(() => {});

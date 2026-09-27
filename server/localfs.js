@@ -103,4 +103,21 @@ function mapErr(e) {
   throw e;
 }
 
-module.exports = { DATA_DIR, HttpError, virt, real, list, stat, mkdir, rename, remove, chmod, diskInfo, mapErr };
+// Erreur d'écriture locale expliquée (droits, disque plein…) avec le chemin vu dans l'interface.
+function whoami() {
+  return typeof process.getuid === 'function' ? `${process.getuid()}:${process.getgid()}` : '?';
+}
+function explainWrite(e, vpath) {
+  if (!e || !e.code || e instanceof HttpError) return e;
+  const dir = path.posix.dirname(virt(vpath));
+  if (e.code === 'EACCES' || e.code === 'EPERM') {
+    return new HttpError(403, `Écriture refusée dans « ${dir} » du stockage local : SFTPad tourne en tant que ${whoami()} et n'a pas le droit d'y écrire. `
+      + 'Choisissez un dossier accessible (sur Unraid : un partage, pas la racine de /mnt/user) ou corrigez les droits / PUID-PGID.', e.code);
+  }
+  if (e.code === 'ENOSPC') return new HttpError(507, `Plus de place sur le disque (${dir})`, e.code);
+  if (e.code === 'EROFS') return new HttpError(403, `« ${dir} » est en lecture seule`, e.code);
+  try { mapErr(e); } catch (m) { return m; }
+  return e;
+}
+
+module.exports = { whoami, explainWrite, DATA_DIR, HttpError, virt, real, list, stat, mkdir, rename, remove, chmod, diskInfo, mapErr };

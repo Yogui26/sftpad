@@ -444,6 +444,7 @@ class App {
       h('dl.kv',
         h('dt', 'Version'), h('dd', this.info.version || ''),
         h('dt', 'Stockage local'), h('dd.mono', this.info.dataDir || ''),
+        h('dt', 'Utilisateur'), h('dd.mono', this.info.runAs || ''),
         disk ? h('dt', 'Espace libre') : null, disk ? h('dd', `${size(disk.free)} sur ${size(disk.total)}`) : null));
     sheet({ title: 'Réglages', body });
   }
