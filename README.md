@@ -150,8 +150,10 @@ empreinte : `ghcr.io/yogui26/sftpad@sha256:…`).
 Les mises à jour ne modifient pas le format des fichiers de `/config` sans le signaler dans la note de version.
 Par prudence, sauvegardez `/mnt/user/appdata/sftpad` avant une mise à jour importante (plugin Appdata Backup).
 
-Publier une nouvelle version : modifier `version` dans `package.json`, puis
-`git tag v1.2.0 && git push origin v1.2.0`.
+Publier une nouvelle version : modifier `version` dans `package.json` puis pousser sur `main` ; l'image reçoit
+automatiquement l'étiquette correspondante (ex. `1.2.0`). La reconstruction hebdomadaire réapplique les correctifs
+système sous la même étiquette de version (même code, base à jour) ; pour figer exactement une image, utilisez
+l'étiquette `sha-…` ou l'empreinte `@sha256:…`.
 
 ## Sauvegarde
 
