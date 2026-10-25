@@ -1,5 +1,5 @@
 // Service worker : met en cache l'interface pour un démarrage instantané (l'API n'est jamais mise en cache).
-const VERSION = 'sftpad-v1.1.0';
+const VERSION = 'sftpad-v1.2.0';
 const SHELL = [
   './', 'index.html', 'style.css', 'app.js', 'manifest.webmanifest',
   'js/util.js', 'js/api.js', 'js/ui.js', 'js/pane.js', 'js/queue.js', 'js/sites.js',

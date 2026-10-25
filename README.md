@@ -151,7 +151,8 @@ Les mises à jour ne modifient pas le format des fichiers de `/config` sans le s
 Par prudence, sauvegardez `/mnt/user/appdata/sftpad` avant une mise à jour importante (plugin Appdata Backup).
 
 Publier une nouvelle version : modifier `version` dans `package.json` puis pousser sur `main` ; l'image reçoit
-automatiquement l'étiquette correspondante (ex. `1.2.0`). La reconstruction hebdomadaire réapplique les correctifs
+automatiquement l'étiquette correspondante (ex. `1.2.0`), et GitHub Actions crée l'étiquette git `v1.2.0` ainsi qu'une
+release avec la liste des changements. La reconstruction hebdomadaire réapplique les correctifs
 système sous la même étiquette de version (même code, base à jour) ; pour figer exactement une image, utilisez
 l'étiquette `sha-…` ou l'empreinte `@sha256:…`.
 

@@ -1,5 +1,6 @@
 # SFTPad — image Docker (Unraid, Proxmox, tout hôte Docker)
-FROM node:22-alpine
+# Node 24 = version LTS (maintenue à long terme)
+FROM node:24-alpine
 
 # apk upgrade : applique les correctifs de sécurité Alpine disponibles au moment du build
 RUN apk upgrade --no-cache && apk add --no-cache tini su-exec
