@@ -1,7 +1,7 @@
 {
   "name": "sftpad",
-  "version": "1.0.0",
-  "description": "Client SFTP web tactile (PWA) inspiré de FileZilla",
+  "version": "1.1.0",
+  "description": "Client SFTP web tactile (PWA) inspir\u00e9 de FileZilla",
   "main": "server/index.js",
   "scripts": {
     "start": "node server/index.js"

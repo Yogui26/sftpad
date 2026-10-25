@@ -129,6 +129,30 @@ ou une authentification au niveau du proxy est recommandé.
 **Tools → New Permissions** sur ce partage dans Unraid, ou corrigez `PUID`/`PGID`. L'utilisateur effectif
 s'affiche dans **Réglages → À propos**.
 
+## Versions et retour en arrière
+
+Chaque image publiée reçoit plusieurs étiquettes :
+
+| Étiquette | Exemple | Évolue ? |
+|---|---|---|
+| `latest` | `ghcr.io/yogui26/sftpad:latest` | oui, toujours la dernière |
+| version | `:1.1.0` | non (version publiée) |
+| version mineure | `:1.1` | suit les correctifs 1.1.x |
+| commit | `:sha-af94d5c` | non |
+| date | `:2026-10-25` | dernière image construite ce jour-là |
+
+**Revenir à une version précédente sur Unraid** : Docker → SFTPad → **Edit** → champ **Repository**, remplacer
+`latest` par l'étiquette voulue (ex. `ghcr.io/yogui26/sftpad:1.1.0`), puis **Apply**. Pour revenir aux mises à jour
+automatiques, remettre `latest`. La liste des versions disponibles se trouve sur
+https://github.com/Yogui26/sftpad/pkgs/container/sftpad (une image sans étiquette s'utilise aussi par son
+empreinte : `ghcr.io/yogui26/sftpad@sha256:…`).
+
+Les mises à jour ne modifient pas le format des fichiers de `/config` sans le signaler dans la note de version.
+Par prudence, sauvegardez `/mnt/user/appdata/sftpad` avant une mise à jour importante (plugin Appdata Backup).
+
+Publier une nouvelle version : modifier `version` dans `package.json`, puis
+`git tag v1.2.0 && git push origin v1.2.0`.
+
 ## Sauvegarde
 
 Tout l'état est dans `/config` : `sites.json` (secrets chiffrés), `secret.key` (clé de chiffrement — **sans elle les mots de passe
