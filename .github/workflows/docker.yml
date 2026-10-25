@@ -28,7 +28,7 @@ jobs:
           echo "version=$v" >> "$GITHUB_OUTPUT"
           echo "minor=${v%.*}" >> "$GITHUB_OUTPUT"
       - id: meta
-        uses: docker/metadata-action@v5
+        uses: docker/metadata-action@v6
         with:
           images: ghcr.io/yogui26/sftpad
           tags: |
