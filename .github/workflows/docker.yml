@@ -4,6 +4,8 @@ on:
   push:
     branches: [main]
     tags: ['v*']
+  schedule:
+    - cron: '17 4 * * 1'   # chaque lundi : reconstruit l'image avec les derniers correctifs Node/Alpine
   workflow_dispatch:
 permissions:
   contents: read
@@ -25,11 +27,13 @@ jobs:
         with:
           images: ghcr.io/yogui26/sftpad
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=semver,pattern={{version}}
       - uses: docker/build-push-action@v6
         with:
           context: .
+          pull: true
+          no-cache: ${{ github.event_name == 'schedule' }}
           platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ steps.meta.outputs.tags }}
