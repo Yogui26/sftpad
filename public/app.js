@@ -5,13 +5,14 @@ import { toast, errToast, sheet, confirm, choose, menu } from './js/ui.js';
 import { Pane } from './js/pane.js';
 import { Queue } from './js/queue.js';
 import { sitesSheet, editSite } from './js/sites.js';
+import { t, tc, tn, applyDom, getLangPref, setLangPref } from './js/i18n.js';
 
 const ON_EXISTS = [
-  { value: 'resume', label: 'Reprendre ou ignorer si identique', hint: 'Complète les fichiers partiels, ignore ceux de même taille (recommandé)' },
-  { value: 'overwrite', label: 'Écraser', hint: 'Remplace systématiquement les fichiers existants' },
-  { value: 'newer', label: 'Écraser si plus récent', hint: 'Remplace seulement si la source est plus récente' },
-  { value: 'skip', label: 'Ignorer', hint: 'Ne transfère pas les fichiers déjà présents' },
-  { value: 'rename', label: 'Renommer', hint: 'Garde les deux : « fichier (1).ext »' },
+  { value: 'resume', label: t('Reprendre ou ignorer si identique'), hint: t('Complète les fichiers partiels, ignore ceux de même taille (recommandé)') },
+  { value: 'overwrite', label: t('Écraser'), hint: t('Remplace systématiquement les fichiers existants') },
+  { value: 'newer', label: t('Écraser si plus récent'), hint: t('Remplace seulement si la source est plus récente') },
+  { value: 'skip', label: t('Ignorer'), hint: t('Ne transfère pas les fichiers déjà présents') },
+  { value: 'rename', label: t('Renommer'), hint: t('Garde les deux : « fichier (1).ext »') },
 ];
 
 class App {
@@ -36,12 +37,15 @@ class App {
   // ---------- Démarrage ----------
   async boot() {
     applyTheme(store.get('theme', 'auto'));
+    applyDom();
+    $('#tabs button[data-pane="local"]').lastChild.textContent = ` ${t('Local')}`;
+    $('#tabs button[data-pane="remote"]').lastChild.textContent = ` ${t('Distant')}`;
     setUnauthorizedHandler(() => { if (!this.authShown) location.reload(); });
     window.addEventListener('beforeinstallprompt', (e) => { e.preventDefault(); this.installPrompt = e; });
     if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
     let state;
     try { state = await get('auth/state'); } catch (e) {
-      document.body.append(h('div.auth', h('div.auth-card', h('h1', 'SFTPad'), h('p.error', e.message), h('button.btn.primary', { onclick: () => location.reload() }, 'Réessayer'))));
+      document.body.append(h('div.auth', h('div.auth-card', h('h1', 'SFTPad'), h('p.error', e.message), h('button.btn.primary', { onclick: () => location.reload() }, t('Réessayer')))));
       return;
     }
     if (!state.authed) return this.showAuth(state.needsSetup);
@@ -52,9 +56,9 @@ class App {
     this.authShown = true;
     const box = $('#auth');
     box.hidden = false;
-    $('#auth-sub').textContent = setup ? 'Première utilisation : choisissez un mot de passe administrateur.' : 'Connexion';
+    $('#auth-sub').textContent = setup ? t('Première utilisation : choisissez un mot de passe administrateur.') : t('Connexion');
     $('#auth-pw2-wrap').hidden = !setup;
-    $('#auth-btn').textContent = setup ? 'Créer et continuer' : 'Se connecter';
+    $('#auth-btn').textContent = setup ? t('Créer et continuer') : tc('auth', 'Se connecter');
     $('#auth-pw').autocomplete = setup ? 'new-password' : 'current-password';
     setTimeout(() => $('#auth-pw').focus(), 50);
     $('#auth-form').onsubmit = async (e) => {
@@ -64,7 +68,7 @@ class App {
       const pw = $('#auth-pw').value;
       try {
         if (setup) {
-          if (pw !== $('#auth-pw2').value) throw new Error('Les mots de passe ne correspondent pas');
+          if (pw !== $('#auth-pw2').value) throw new Error(t('Les mots de passe ne correspondent pas'));
           await post('auth/setup', { password: pw });
         } else await post('auth/login', { password: pw, remember: true });
         box.hidden = true;
@@ -143,7 +147,7 @@ class App {
     let bar = $('.offline');
     if (on) { if (bar) bar.remove(); if (this.wasOffline) { this.local.refresh(true); if (this.connected) this.remote.refresh(true); } this.wasOffline = false; return; }
     this.wasOffline = true;
-    if (!bar) document.body.append(h('div.offline', 'Connexion au serveur SFTPad perdue — reconnexion…'));
+    if (!bar) document.body.append(h('div.offline', t('Connexion au serveur SFTPad perdue — reconnexion…')));
   }
 
   // ---------- WebSocket ----------
@@ -172,7 +176,7 @@ class App {
     const now = Date.now();
     if (this._lastErr && now - this._lastErr < 4000) return;
     this._lastErr = now;
-    toast(`Échec du transfert « ${j.name} » : ${j.error}`, 'err');
+    toast(t('Échec du transfert « {name} » : {error}', { name: j.name, error: j.error }), 'err');
   }
 
   // ---------- Sites & connexion ----------
@@ -197,15 +201,15 @@ class App {
   updateTop(live) {
     const s = this.site;
     const dot = $('#site-dot');
-    $('#site-name').textContent = s ? s.name : 'Aucun site';
+    $('#site-name').textContent = s ? s.name : t('Aucun site');
     dot.style.background = '';
     dot.className = `site-dot${this.connecting ? ' busy' : this.connected ? ' on' : ''}`;
     if (s && this.connected && live === false) dot.className = 'site-dot';
-    $('#site-sub').textContent = !s ? 'Toucher pour choisir un serveur'
-      : this.connecting ? 'Connexion…'
-        : this.connected ? `${s.username}@${s.host}${live === false ? ' · en veille' : ''}` : 'Déconnecté';
+    $('#site-sub').textContent = !s ? t('Toucher pour choisir un serveur')
+      : this.connecting ? t('Connexion…')
+        : this.connected ? `${s.username}@${s.host}${live === false ? t(' · en veille') : ''}` : t('Déconnecté');
     const tab = $('#tabs button[data-pane="remote"]');
-    tab.lastChild.textContent = ` ${s ? s.name : 'Distant'}`;
+    tab.lastChild.textContent = ` ${s ? s.name : t('Distant')}`;
   }
 
   async connect(id, { switchTab = true } = {}) {
@@ -252,12 +256,12 @@ class App {
     const s = this.site;
     if (e.code === 'HOSTKEY_UNKNOWN' && s) {
       const ok = await confirm({
-        title: 'Nouveau serveur',
+        title: t('Nouveau serveur'),
         message: h('div.form',
-          h('p', { style: { margin: 0 } }, `Première connexion à ${s.host}:${s.port}. Vérifiez que l'empreinte de la clé d'hôte correspond bien à celle de votre serveur :`),
+          h('p', { style: { margin: 0 } }, t("Première connexion à {host}:{port}. Vérifiez que l'empreinte de la clé d'hôte correspond bien à celle de votre serveur :", { host: s.host, port: s.port })),
           h('div.callout', h('small.muted', e.data.type), h('p.mono', { style: { margin: '4px 0 0' } }, e.data.fingerprint)),
-          h('p.muted', { style: { margin: 0, fontSize: '13px' } }, 'Sur le serveur : ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub')),
-        ok: 'Faire confiance',
+          h('p.muted', { style: { margin: 0, fontSize: '13px' } }, t('Sur le serveur : {cmd}', { cmd: 'ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub' }))),
+        ok: t('Faire confiance'),
       });
       if (!ok) return;
       await post(`remote/${s.id}/trust`, { fingerprint: e.data.fingerprint });
@@ -267,11 +271,11 @@ class App {
     }
     if (e.code === 'HOSTKEY_MISMATCH' && s) {
       const ok = await confirm({
-        title: "⚠ Clé d'hôte modifiée",
+        title: t("⚠ Clé d'hôte modifiée"),
         message: h('div.form',
-          h('div.callout.danger', h('b', "La clé d'hôte de ce serveur a changé."), h('p', { style: { margin: '6px 0 0' } }, "Cela arrive après une réinstallation du serveur… ou lors d'une attaque de l'homme du milieu. Ne continuez que si vous savez pourquoi.")),
-          h('dl.kv', h('dt', 'Connue'), h('dd.mono', e.data.known), h('dt', 'Reçue'), h('dd.mono', e.data.fingerprint))),
-        ok: 'Remplacer la clé',
+          h('div.callout.danger', h('b', t("La clé d'hôte de ce serveur a changé.")), h('p', { style: { margin: '6px 0 0' } }, t("Cela arrive après une réinstallation du serveur… ou lors d'une attaque de l'homme du milieu. Ne continuez que si vous savez pourquoi."))),
+          h('dl.kv', h('dt', t('Connue')), h('dd.mono', e.data.known), h('dt', t('Reçue')), h('dd.mono', e.data.fingerprint))),
+        ok: t('Remplacer la clé'),
         danger: true,
       });
       if (!ok) return;
@@ -281,7 +285,7 @@ class App {
       return retry && retry();
     }
     if (e.code === 'AUTH' && s) {
-      toast(`${s.name} : ${e.message}. Vérifiez l'identifiant et le mot de passe ou la clé.`, 'err');
+      toast(t("{name} : {error}. Vérifiez l'identifiant et le mot de passe ou la clé.", { name: s.name, error: e.message }), 'err');
       return;
     }
     errToast(e);
@@ -297,10 +301,10 @@ class App {
     if (!p) return;
     $('#selcount').textContent = `${p.sel.size}`;
     const btn = $('#sel-transfer');
-    btn.querySelector('span').textContent = p.isLocal ? 'Envoyer' : 'Télécharger';
+    btn.querySelector('span').textContent = p.isLocal ? t('Envoyer') : t('Télécharger');
     btn.querySelector('use').setAttribute('href', p.isLocal ? '#i-send' : '#i-receive');
     btn.disabled = !p.other.ready;
-    btn.title = p.other.ready ? `Vers ${p.other.path}` : 'Connectez-vous à un serveur';
+    btn.title = p.other.ready ? t('Vers {path}', { path: p.other.path }) : t('Connectez-vous à un serveur');
   }
 
   selMenu(e) {
@@ -312,23 +316,23 @@ class App {
     const isCtx = e && e.type === 'contextmenu';
     const r = !isCtx && e && e.target.closest ? e.target.closest('button').getBoundingClientRect() : null;
     menu([
-      { label: p.isLocal ? 'Envoyer sur le serveur' : 'Télécharger en local', icon: p.isLocal ? 'send' : 'receive', primary: true, disabled: !p.other.ready, action: () => this.transfer(p, names) },
-      { label: 'Transférer avec options…', icon: 'queue', disabled: !p.other.ready, action: () => this.transfer(p, names, null, true) },
-      hasFiles ? { label: "Enregistrer sur l'appareil", icon: 'phone', action: () => p.toDevice(names) } : null,
+      { label: p.isLocal ? t('Envoyer sur le serveur') : t('Télécharger en local'), icon: p.isLocal ? 'send' : 'receive', primary: true, disabled: !p.other.ready, action: () => this.transfer(p, names) },
+      { label: t('Transférer avec options…'), icon: 'queue', disabled: !p.other.ready, action: () => this.transfer(p, names, null, true) },
+      hasFiles ? { label: t("Enregistrer sur l'appareil"), icon: 'phone', action: () => p.toDevice(names) } : null,
       '-',
-      one ? { label: 'Renommer', icon: 'edit', action: () => p.rename(one) } : null,
-      { label: 'Déplacer…', icon: 'receive', action: () => p.move(names) },
-      { label: 'Permissions', icon: 'lock', action: () => p.chmod(names) },
-      { label: 'Inverser la sélection', icon: 'selectall', action: () => p.invertSel() },
+      one ? { label: t('Renommer'), icon: 'edit', action: () => p.rename(one) } : null,
+      { label: t('Déplacer…'), icon: 'receive', action: () => p.move(names) },
+      { label: t('Permissions'), icon: 'lock', action: () => p.chmod(names) },
+      { label: t('Inverser la sélection'), icon: 'selectall', action: () => p.invertSel() },
       '-',
-      { label: `Supprimer (${names.length})`, icon: 'trash', danger: true, action: () => p.remove(names) },
+      { label: t('Supprimer ({n})', { n: names.length }), icon: 'trash', danger: true, action: () => p.remove(names) },
     ], { x: isCtx ? e.clientX : r ? r.left : undefined, y: isCtx ? e.clientY : r ? r.top - 330 : undefined });
   }
 
   // ---------- Transferts ----------
   async transfer(from, names, targetDir, ask = false) {
     const to = from.other;
-    if (!to.ready || !to.path) { toast(from.isLocal ? 'Connectez-vous d\'abord à un serveur' : 'Panneau local indisponible', 'err'); return; }
+    if (!to.ready || !to.path) { toast(from.isLocal ? t("Connectez-vous d'abord à un serveur") : t('Panneau local indisponible'), 'err'); return; }
     const dir = targetDir || to.path;
     const entries = names.map((n) => from.entry(n)).filter(Boolean);
     if (!entries.length) return;
@@ -336,9 +340,11 @@ class App {
     const clashes = dir === to.path ? entries.filter((e) => to.entry(e.name)) : [];
     if (ask || clashes.length) {
       const msg = clashes.length
-        ? `${clashes.length === 1 ? `« ${clashes[0].name} » existe déjà` : `${clashes.length} éléments existent déjà`} dans ${dir}. Pour les fichiers déjà présents :`
-        : `Destination : ${dir}. Si un fichier existe déjà :`;
-      const v = await choose({ title: 'Fichiers existants', message: msg, options: ON_EXISTS, value: onExists, ok: 'Transférer' });
+        ? (clashes.length === 1
+          ? t('« {name} » existe déjà dans {dir}. Pour les fichiers déjà présents :', { name: clashes[0].name, dir })
+          : t('{n} éléments existent déjà dans {dir}. Pour les fichiers déjà présents :', { n: clashes.length, dir }))
+        : t('Destination : {dir}. Si un fichier existe déjà :', { dir });
+      const v = await choose({ title: t('Fichiers existants'), message: msg, options: ON_EXISTS, value: onExists, ok: t('Transférer') });
       if (!v) return;
       onExists = v;
     }
@@ -352,7 +358,7 @@ class App {
       await post('transfers', body);
       vibrate(10);
       const n = entries.length;
-      toast(`${n > 1 ? n + ' éléments' : '« ' + entries[0].name + ' »'} ${from.isLocal ? '→ serveur' : '→ local'} : ${dir}`);
+      toast(t('{what} {to} : {dir}', { what: n > 1 ? t('{n} éléments', { n }) : t('« {name} »', { name: entries[0].name }), to: from.isLocal ? t('→ serveur') : t('→ local'), dir }));
       from.clearSel();
     } catch (e) { errToast(e); }
   }
@@ -375,7 +381,7 @@ class App {
   async uploadFromDevice(pane, files, dir) {
     const total = files.reduce((a, f) => a + f.file.size, 0);
     const url = pane.isLocal ? `local/upload?${qs({ path: dir })}` : `remote/${this.siteId}/upload?${qs({ path: dir })}`;
-    const name = files.length === 1 ? files[0].rel : `${files.length} fichiers`;
+    const name = files.length === 1 ? files[0].rel : t('{n} fichiers', { n: files.length });
     const job = this.queue.addDevice({ id: 'dev-' + Math.random().toString(36).slice(2), device: true, name, dst: dir, size: total, done: 0, speed: 0, status: 'running', createdAt: Date.now() });
     let lock = null;
     try { lock = await navigator.wakeLock?.request('screen'); } catch { /* */ }
@@ -387,12 +393,12 @@ class App {
       this.queue.changed();
     });
     job.abort = () => req.abort();
-    toast(`Envoi de ${name} (${size(total)}) vers ${dir}`);
+    toast(t('Envoi de {name} ({size}) vers {dir}', { name, size: size(total), dir }));
     try {
       await req;
       job.status = 'done';
       job.done = total;
-      toast(`${name} envoyé${files.length > 1 ? 's' : ''}`, 'ok');
+      toast(tn(files.length, '{name} envoyé', '{name} envoyés', { name }), 'ok');
       if (pane.path === dir) pane.refresh(true);
     } catch (e) {
       job.status = e.status === 499 ? 'canceled' : 'error';
@@ -412,41 +418,52 @@ class App {
     const s = this.settings;
     const conc = h('select', [1, 2, 3, 4, 5, 6, 8, 10].map((n) => h('option', { value: n, selected: Number(s.concurrency) === n }, String(n))));
     const onEx = h('select', ON_EXISTS.map((o) => h('option', { value: o.value, selected: s.onExists === o.value }, o.label)));
-    const mode = h('input', { value: s.localFileMode || '', placeholder: 'par défaut (umask)', inputmode: 'numeric', maxlength: 4 });
+    const mode = h('input', { value: s.localFileMode || '', placeholder: t('par défaut (umask)'), inputmode: 'numeric', maxlength: 4 });
     const theme = store.get('theme', 'auto');
-    const seg = h('div.seg', [['auto', 'Auto'], ['light', 'Clair'], ['dark', 'Sombre']].map(([v, l]) => h('button', {
+    const seg = h('div.seg', [['auto', t('Auto')], ['light', t('Clair')], ['dark', t('Sombre')]].map(([v, l]) => h('button', {
       type: 'button', class: theme === v ? 'on' : '',
       onclick: (e) => { store.set('theme', v); applyTheme(v); [...seg.children].forEach((b) => b.classList.toggle('on', b === e.currentTarget)); },
+    }, l)));
+    const langPref = getLangPref();
+    const langSeg = h('div.seg', [['auto', t('Auto')], ['fr', 'Français'], ['en', 'English']].map(([v, l]) => h('button', {
+      type: 'button', class: langPref === v ? 'on' : '',
+      onclick: (e) => {
+        // Les panneaux sont construits avec les textes : on recharge si la langue effective change.
+        if (setLangPref(v)) return location.reload();
+        [...langSeg.children].forEach((b) => b.classList.toggle('on', b === e.currentTarget));
+      },
     }, l)));
     const saveSettings = async () => {
       try {
         this.settings = await put('settings', { concurrency: conc.value, onExists: onEx.value, localFileMode: mode.value });
-        toast('Réglages enregistrés', 'ok');
+        toast(t('Réglages enregistrés'), 'ok');
       } catch (e) { errToast(e); }
     };
     [conc, onEx].forEach((x) => x.addEventListener('change', saveSettings));
     mode.addEventListener('change', saveSettings);
     const disk = this.disk;
     const body = h('div.form',
-      h('h4', 'Transferts'),
-      h('label.field', h('span', 'Transferts simultanés'), conc),
-      h('label.field', h('span', 'Si le fichier existe déjà'), onEx),
-      h('label.field', h('span', 'Permissions des fichiers créés en local'), mode, h('span.hint', 'Octal, ex. 664. Laisser vide pour le comportement par défaut.')),
-      h('h4', 'Affichage'),
+      h('h4', t('Transferts')),
+      h('label.field', h('span', t('Transferts simultanés')), conc),
+      h('label.field', h('span', t('Si le fichier existe déjà')), onEx),
+      h('label.field', h('span', t('Permissions des fichiers créés en local')), mode, h('span.hint', t('Octal, ex. 664. Laisser vide pour le comportement par défaut.'))),
+      h('h4', t('Affichage')),
       seg,
-      this.installPrompt ? h('button.btn', { onclick: async () => { this.installPrompt.prompt(); this.installPrompt = null; } }, icon('download', 'sm'), "Installer l'application") : null,
-      h('h4', 'Sécurité'),
-      this.info.authDisabled ? h('p.callout.warn', { style: { margin: 0 } }, 'Authentification intégrée désactivée (AUTH=none) : l\'accès doit être protégé par votre reverse proxy.')
-        : this.info.envPassword ? h('p.muted', { style: { margin: 0 } }, 'Mot de passe défini par la variable ADMIN_PASSWORD.')
-          : h('button.btn', { onclick: () => changePassword() }, icon('key', 'sm'), 'Changer le mot de passe'),
-      !this.info.authDisabled ? h('button.btn', { style: { color: 'var(--danger)' }, onclick: async () => { await post('auth/logout'); location.reload(); } }, icon('logout', 'sm'), 'Se déconnecter de SFTPad') : null,
-      h('h4', 'À propos'),
+      h('h4', t('Langue')),
+      langSeg,
+      this.installPrompt ? h('button.btn', { onclick: async () => { this.installPrompt.prompt(); this.installPrompt = null; } }, icon('download', 'sm'), t("Installer l'application")) : null,
+      h('h4', t('Sécurité')),
+      this.info.authDisabled ? h('p.callout.warn', { style: { margin: 0 } }, t("Authentification intégrée désactivée (AUTH=none) : l'accès doit être protégé par votre reverse proxy."))
+        : this.info.envPassword ? h('p.muted', { style: { margin: 0 } }, t('Mot de passe défini par la variable ADMIN_PASSWORD.'))
+          : h('button.btn', { onclick: () => changePassword() }, icon('key', 'sm'), t('Changer le mot de passe')),
+      !this.info.authDisabled ? h('button.btn', { style: { color: 'var(--danger)' }, onclick: async () => { await post('auth/logout'); location.reload(); } }, icon('logout', 'sm'), t('Se déconnecter de SFTPad')) : null,
+      h('h4', t('À propos')),
       h('dl.kv',
-        h('dt', 'Version'), h('dd', this.info.version || ''),
-        h('dt', 'Stockage local'), h('dd.mono', this.info.dataDir || ''),
-        h('dt', 'Utilisateur'), h('dd.mono', this.info.runAs || ''),
-        disk ? h('dt', 'Espace libre') : null, disk ? h('dd', `${size(disk.free)} sur ${size(disk.total)}`) : null));
-    sheet({ title: 'Réglages', body });
+        h('dt', t('Version')), h('dd', this.info.version || ''),
+        h('dt', t('Stockage local')), h('dd.mono', this.info.dataDir || ''),
+        h('dt', t('Utilisateur')), h('dd.mono', this.info.runAs || ''),
+        disk ? h('dt', t('Espace libre')) : null, disk ? h('dd', t('{free} sur {total}', { free: size(disk.free), total: size(disk.total) })) : null));
+    sheet({ title: t('Réglages'), body });
   }
 }
 
@@ -456,17 +473,17 @@ function changePassword() {
   const nx2 = h('input', { type: 'password', autocomplete: 'new-password' });
   const err = h('p.error', { hidden: true });
   const s = sheet({
-    title: 'Changer le mot de passe',
+    title: t('Changer le mot de passe'),
     body: h('form.form', { onsubmit: (e) => { e.preventDefault(); go(); } },
-      h('label.field', h('span', 'Mot de passe actuel'), cur),
-      h('label.field', h('span', 'Nouveau mot de passe (8 caractères min.)'), nx),
-      h('label.field', h('span', 'Confirmer'), nx2), err),
-    foot: [h('button.btn', { onclick: () => s.close() }, 'Annuler'), h('button.btn.primary', { onclick: () => go() }, 'Changer')],
+      h('label.field', h('span', t('Mot de passe actuel')), cur),
+      h('label.field', h('span', t('Nouveau mot de passe (8 caractères min.)')), nx),
+      h('label.field', h('span', t('Confirmer')), nx2), err),
+    foot: [h('button.btn', { onclick: () => s.close() }, t('Annuler')), h('button.btn.primary', { onclick: () => go() }, t('Changer'))],
   });
   async function go() {
     err.hidden = true;
-    if (nx.value !== nx2.value) { err.textContent = 'Les mots de passe ne correspondent pas'; err.hidden = false; return; }
-    try { await post('auth/password', { current: cur.value, next: nx.value }); s.close(); toast('Mot de passe modifié. Les autres appareils sont déconnectés.', 'ok'); } catch (e) { err.textContent = e.message; err.hidden = false; }
+    if (nx.value !== nx2.value) { err.textContent = t('Les mots de passe ne correspondent pas'); err.hidden = false; return; }
+    try { await post('auth/password', { current: cur.value, next: nx.value }); s.close(); toast(t('Mot de passe modifié. Les autres appareils sont déconnectés.'), 'ok'); } catch (e) { err.textContent = e.message; err.hidden = false; }
   }
 }
 

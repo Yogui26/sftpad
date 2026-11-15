@@ -9,6 +9,7 @@ const { JsonDoc } = require('./store');
 const { id: newId } = require('./crypto');
 const { sftpErr, promisify: p } = require('./sftp');
 const fastio = require('./fastio');
+const { tr } = require('./i18n');
 
 const KEEP_FINISHED = 500;
 const MAX_ATTEMPTS = 3;
@@ -24,7 +25,7 @@ function uniqueName(name, exists) {
   return `${base} (${Date.now()})${ext}`;
 }
 
-class Aborted extends Error { constructor() { super('Annulé'); this.aborted = true; } }
+class Aborted extends Error { constructor() { super(tr('Annulé')); this.aborted = true; } }
 
 class TransferQueue {
   constructor({ sftp, getSite, getSettings }) {
@@ -76,15 +77,15 @@ class TransferQueue {
   // items: [{ src, dst, kind, size }]  dir: 'up' (local → distant) | 'down' (distant → local)
   add(siteId, dir, items, onExists) {
     const site = this.getSite(siteId);
-    if (!site) throw new localfs.HttpError(404, 'Site inconnu');
-    if (!['up', 'down'].includes(dir)) throw new localfs.HttpError(400, 'Sens de transfert invalide');
+    if (!site) throw new localfs.HttpError(404, tr('Site inconnu'));
+    if (!['up', 'down'].includes(dir)) throw new localfs.HttpError(400, tr('Sens de transfert invalide'));
     onExists = ON_EXISTS.includes(onExists) ? onExists : (this.getSettings().onExists || 'resume');
     // Ignore les doublons d'un transfert déjà en attente ou en cours (même source, même destination).
     const active = new Set(this.jobs.filter((j) => j.status === 'queued' || j.status === 'running').map((j) => `${j.siteId}|${j.dir}|${j.src}|${j.dst}`));
     const created = items
       .map((it) => this.makeJob(site, dir, it, onExists))
       .filter((j) => !active.has(`${j.siteId}|${j.dir}|${j.src}|${j.dst}`));
-    if (!created.length) throw new localfs.HttpError(409, 'Ces éléments sont déjà dans la file de transferts');
+    if (!created.length) throw new localfs.HttpError(409, tr('Ces éléments sont déjà dans la file de transferts'));
     this.jobs.push(...created);
     created.forEach((j) => this.changed(j));
     this.changed(created[0] || { id: '_' }, true);
@@ -205,7 +206,7 @@ class TransferQueue {
     run.then((result) => {
       if (ctl.aborted) return;
       job.status = result === 'skipped' ? 'skipped' : 'done';
-      if (result === 'skipped') job.error = job.error || 'Déjà présent, ignoré';
+      if (result === 'skipped') job.error = job.error || tr('Déjà présent, ignoré');
       if (job.kind === 'file') job.done = job.size;
       this.emit('dirChanged', job.dir === 'up'
         ? { side: 'remote', siteId: job.siteId, path: rpath.dirname(job.dst) }
@@ -217,7 +218,7 @@ class TransferQueue {
       if (transient) this.sftp.disconnect(job.siteId);
       if (transient && job.attempts < MAX_ATTEMPTS) {
         job.status = 'queued';
-        job.error = `Nouvel essai (${job.attempts}/${MAX_ATTEMPTS - 1}) : ${e.message}`;
+        job.error = tr('Nouvel essai ({n}/{max}) : {error}', { n: job.attempts, max: MAX_ATTEMPTS - 1, error: e.message });
         if (job.onExists !== 'skip') job.onExists = 'resume';
         job.retryAt = Date.now() + 3000 * job.attempts;
         setTimeout(() => this.pump(), 3000 * job.attempts + 50);
@@ -254,7 +255,7 @@ class TransferQueue {
   // Décide quoi faire si la destination existe. Retourne { action: 'write'|'skip', start, dst }.
   decide(job, srcSize, srcMtime, dstStat, existsName) {
     if (!dstStat) return { action: 'write', start: 0 };
-    if (dstStat.isDirectory && dstStat.isDirectory()) throw new localfs.HttpError(409, 'Un dossier porte déjà ce nom à la destination');
+    if (dstStat.isDirectory && dstStat.isDirectory()) throw new localfs.HttpError(409, tr('Un dossier porte déjà ce nom à la destination'));
     const dSize = dstStat.size;
     const dMtime = dstStat.mtimeMs != null ? dstStat.mtimeMs : dstStat.mtime * 1000;
     switch (job.onExists) {
@@ -346,7 +347,7 @@ class TransferQueue {
   // Un dossier : on crée la destination puis on ajoute ses éléments à la file, juste après lui.
   async runDir(job, ctl) {
     const site = this.getSite(job.siteId);
-    if (!site) throw new localfs.HttpError(404, 'Site supprimé');
+    if (!site) throw new localfs.HttpError(404, tr('Site supprimé'));
     let children = [];
     if (job.dir === 'down') {
       const conn = this.sftp.get(job.siteId);

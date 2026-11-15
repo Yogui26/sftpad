@@ -17,6 +17,8 @@ const { HttpError } = localfs;
 const { SftpManager, sftpErr, promisify: p } = require('./sftp');
 const { TransferQueue, ON_EXISTS } = require('./transfers');
 const fastio = require('./fastio');
+const i18n = require('./i18n');
+const { tr } = i18n;
 const pkg = require('../package.json');
 
 const PORT = Number(process.env.PORT || 8080);
@@ -38,6 +40,9 @@ const settings = () => ({ ...DEFAULT_SETTINGS, ...(config.data.settings || {}) }
 
 const envPasswordHash = process.env.ADMIN_PASSWORD ? cr.hashPassword(process.env.ADMIN_PASSWORD) : null;
 const passwordHash = () => envPasswordHash || config.data.passwordHash;
+
+// Dernière langue d'interface vue : sert aux messages des transferts en arrière-plan.
+i18n.setFallback(config.data.lang, (lang) => { config.data.lang = lang; config.save(); });
 
 const getSite = (id) => sitesDoc.data.sites.find((s) => s.id === id);
 
@@ -75,7 +80,7 @@ setInterval(pruneSessions, 3600e3).unref();
 const fails = new Map();
 function loginThrottle(ip) {
   const f = fails.get(ip);
-  if (f && f.until > Date.now()) throw new HttpError(429, `Trop d'essais, réessayez dans ${Math.ceil((f.until - Date.now()) / 1000)} s`);
+  if (f && f.until > Date.now()) throw new HttpError(429, tr("Trop d'essais, réessayez dans {s} s", { s: Math.ceil((f.until - Date.now()) / 1000) }));
 }
 function loginFailed(ip) {
   const f = fails.get(ip) || { n: 0, until: 0 };
@@ -99,10 +104,13 @@ app.use((req, res, next) => {
 
 const api = express.Router();
 
+// Langue des messages : en-tête X-SFTPad-Lang envoyé par l'interface (sinon la dernière langue vue).
+api.use(i18n.middleware);
+
 // Protection CSRF : toute requête d'écriture doit porter l'en-tête X-SFTPad (impossible depuis un autre site sans CORS).
 api.use((req, res, next) => {
   if (req.method !== 'GET' && req.method !== 'HEAD' && req.get('x-sftpad') !== '1') {
-    return next(new HttpError(403, 'En-tête X-SFTPad manquant'));
+    return next(new HttpError(403, tr('En-tête X-SFTPad manquant')));
   }
   next();
 });
@@ -117,9 +125,9 @@ api.get('/auth/state', (req, res) => {
 });
 
 api.post('/auth/setup', (req, res) => {
-  if (passwordHash()) throw new HttpError(409, 'Mot de passe déjà défini');
+  if (passwordHash()) throw new HttpError(409, tr('Mot de passe déjà défini'));
   const pw = String(req.body.password || '');
-  if (pw.length < 8) throw new HttpError(400, 'Au moins 8 caractères');
+  if (pw.length < 8) throw new HttpError(400, tr('Au moins 8 caractères'));
   config.data.passwordHash = cr.hashPassword(pw);
   config.save(true);
   createSession(res, req, true);
@@ -131,7 +139,7 @@ api.post('/auth/login', (req, res) => {
   loginThrottle(ip);
   if (!cr.verifyPassword(String(req.body.password || ''), passwordHash())) {
     loginFailed(ip);
-    throw new HttpError(401, 'Mot de passe incorrect');
+    throw new HttpError(401, tr('Mot de passe incorrect'));
   }
   fails.delete(ip);
   createSession(res, req, req.body.remember !== false);
@@ -147,15 +155,15 @@ api.post('/auth/logout', (req, res) => {
 
 // Tout ce qui suit nécessite d'être connecté.
 api.use((req, res, next) => {
-  if (!sessionValid(req.cookies[COOKIE])) return next(new HttpError(401, 'Non connecté', 'NOAUTH'));
+  if (!sessionValid(req.cookies[COOKIE])) return next(new HttpError(401, tr('Non connecté'), 'NOAUTH'));
   next();
 });
 
 api.post('/auth/password', (req, res) => {
-  if (envPasswordHash) throw new HttpError(400, 'Mot de passe défini par la variable ADMIN_PASSWORD');
-  if (!cr.verifyPassword(String(req.body.current || ''), passwordHash())) throw new HttpError(401, 'Mot de passe actuel incorrect');
+  if (envPasswordHash) throw new HttpError(400, tr('Mot de passe défini par la variable ADMIN_PASSWORD'));
+  if (!cr.verifyPassword(String(req.body.current || ''), passwordHash())) throw new HttpError(401, tr('Mot de passe actuel incorrect'));
   const pw = String(req.body.next || '');
-  if (pw.length < 8) throw new HttpError(400, 'Au moins 8 caractères');
+  if (pw.length < 8) throw new HttpError(400, tr('Au moins 8 caractères'));
   config.data.passwordHash = cr.hashPassword(pw);
   sessionsDoc.data.sessions = {};
   sessionsDoc.save(true);
@@ -175,7 +183,7 @@ api.put('/settings', (req, res) => {
   if (b.onExists != null && ON_EXISTS.includes(b.onExists)) s.onExists = b.onExists;
   if (b.localFileMode != null) {
     const m = String(b.localFileMode).trim();
-    if (m && !/^[0-7]{3,4}$/.test(m)) throw new HttpError(400, 'Mode octal invalide (ex. 664)');
+    if (m && !/^[0-7]{3,4}$/.test(m)) throw new HttpError(400, tr('Mode octal invalide (ex. 664)'));
     s.localFileMode = m;
   }
   config.data.settings = s;
@@ -208,14 +216,14 @@ function applySite(s, b, isNew) {
   if (b.clearPassword) s.password = null;
   if (b.privateKey) {
     try { const k = sshUtils.parseKey(b.privateKey, b.passphrase || undefined); if (k instanceof Error) throw k; }
-    catch (e) { throw new HttpError(400, `Clé privée invalide : ${e.message}`); }
+    catch (e) { throw new HttpError(400, tr('Clé privée invalide : {error}', { error: e.message })); }
     s.privateKey = cr.encrypt(b.privateKey);
   }
   if (b.passphrase) s.passphrase = cr.encrypt(b.passphrase);
   if (b.clearPassphrase) s.passphrase = null;
   if (!s.name) s.name = s.host;
-  if (!s.host) throw new HttpError(400, "L'hôte est obligatoire");
-  if (!s.username) throw new HttpError(400, "L'identifiant est obligatoire");
+  if (!s.host) throw new HttpError(400, tr("L'hôte est obligatoire"));
+  if (!s.username) throw new HttpError(400, tr("L'identifiant est obligatoire"));
   if (!isNew && oldTarget !== `${s.host}:${s.port}`) s.hostKey = null;
 }
 
@@ -231,7 +239,7 @@ api.post('/sites', (req, res) => {
 
 api.put('/sites/:id', (req, res) => {
   const s = getSite(req.params.id);
-  if (!s) throw new HttpError(404, 'Site inconnu');
+  if (!s) throw new HttpError(404, tr('Site inconnu'));
   const copy = { ...s };
   applySite(copy, req.body || {}, false);
   Object.assign(s, copy);
@@ -256,7 +264,7 @@ api.post('/sites/reorder', (req, res) => {
 
 api.get('/sites/:id/pubkey', (req, res) => {
   const s = getSite(req.params.id);
-  if (!s || !s.privateKey) throw new HttpError(404, 'Pas de clé pour ce site');
+  if (!s || !s.privateKey) throw new HttpError(404, tr('Pas de clé pour ce site'));
   const k = sshUtils.parseKey(cr.decrypt(s.privateKey), cr.decrypt(s.passphrase) || undefined);
   if (k instanceof Error) throw new HttpError(400, k.message);
   const one = Array.isArray(k) ? k[0] : k;
@@ -271,7 +279,7 @@ api.post('/keys/generate', (req, res) => {
 
 // ---------- Distant (SFTP) ----------
 const conn = (req) => {
-  if (!getSite(req.params.id)) throw new HttpError(404, 'Site inconnu');
+  if (!getSite(req.params.id)) throw new HttpError(404, tr('Site inconnu'));
   return sftp.get(req.params.id);
 };
 const rp = (v) => {
@@ -291,9 +299,9 @@ api.post('/remote/:id/connect', async (req, res) => {
 
 api.post('/remote/:id/trust', (req, res) => {
   const s = getSite(req.params.id);
-  if (!s) throw new HttpError(404, 'Site inconnu');
+  if (!s) throw new HttpError(404, tr('Site inconnu'));
   const fp = String(req.body.fingerprint || '');
-  if (!/^SHA256:[A-Za-z0-9+/]+$/.test(fp)) throw new HttpError(400, 'Empreinte invalide');
+  if (!/^SHA256:[A-Za-z0-9+/]+$/.test(fp)) throw new HttpError(400, tr('Empreinte invalide'));
   s.hostKey = fp;
   sitesDoc.save(true);
   sftp.disconnect(s.id);
@@ -302,7 +310,7 @@ api.post('/remote/:id/trust', (req, res) => {
 
 api.post('/remote/:id/forget', (req, res) => {
   const s = getSite(req.params.id);
-  if (!s) throw new HttpError(404, 'Site inconnu');
+  if (!s) throw new HttpError(404, tr('Site inconnu'));
   s.hostKey = null;
   sitesDoc.save(true);
   sftp.disconnect(s.id);
@@ -322,15 +330,15 @@ api.post('/remote/:id/delete', async (req, res) => {
   const errors = [];
   for (const t of req.body.paths || []) {
     const x = rp(t);
-    if (!x || x === '/') { errors.push(`${t} : refusé`); continue; }
-    try { await c.remove(x); } catch (e) { errors.push(`${t} : ${sftpErr(e).message}`); }
+    if (!x || x === '/') { errors.push(tr('{path} : refusé', { path: t })); continue; }
+    try { await c.remove(x); } catch (e) { errors.push(tr('{path} : {error}', { path: t, error: sftpErr(e).message })); }
   }
   if (errors.length) throw new HttpError(500, errors.join('\n'));
   res.json({ ok: true });
 });
 api.post('/remote/:id/chmod', async (req, res) => {
   const mode = parseInt(String(req.body.mode), 8);
-  if (isNaN(mode) || mode < 0 || mode > 0o7777) throw new HttpError(400, 'Mode invalide');
+  if (isNaN(mode) || mode < 0 || mode > 0o7777) throw new HttpError(400, tr('Mode invalide'));
   const c = conn(req);
   for (const t of req.body.paths || []) await c.chmod(rp(t), mode);
   res.json({ ok: true });
@@ -364,7 +372,7 @@ api.get('/remote/:id/download', async (req, res) => {
   const c = conn(req);
   const target = rp(req.query.path);
   const st = await c.stat(target);
-  if (st.isDirectory()) throw new HttpError(400, 'Téléchargement de dossier vers l\'appareil non pris en charge (transférez-le côté local)');
+  if (st.isDirectory()) throw new HttpError(400, tr("Téléchargement de dossier vers l'appareil non pris en charge (transférez-le côté local)"));
   const ch = await c.channel();
   const name = path.posix.basename(target);
   const inline = req.query.inline === '1';
@@ -392,21 +400,21 @@ api.post('/local/rename', async (req, res) => { await localfs.rename(req.body.fr
 api.post('/local/delete', async (req, res) => {
   const errors = [];
   for (const t of req.body.paths || []) {
-    try { await localfs.remove(t); } catch (e) { errors.push(`${t} : ${e.message}`); }
+    try { await localfs.remove(t); } catch (e) { errors.push(tr('{path} : {error}', { path: t, error: e.message })); }
   }
   if (errors.length) throw new HttpError(500, errors.join('\n'));
   res.json({ ok: true });
 });
 api.post('/local/chmod', async (req, res) => {
   const mode = parseInt(String(req.body.mode), 8);
-  if (isNaN(mode) || mode < 0 || mode > 0o7777) throw new HttpError(400, 'Mode invalide');
+  if (isNaN(mode) || mode < 0 || mode > 0o7777) throw new HttpError(400, tr('Mode invalide'));
   for (const t of req.body.paths || []) await localfs.chmod(t, mode);
   res.json({ ok: true });
 });
 api.get('/local/download', async (req, res) => {
   const real = localfs.real(req.query.path);
   const st = await fsp.stat(real).catch(localfs.mapErr);
-  if (st.isDirectory()) throw new HttpError(400, 'Téléchargement de dossier vers l\'appareil non pris en charge');
+  if (st.isDirectory()) throw new HttpError(400, tr("Téléchargement de dossier vers l'appareil non pris en charge"));
   const name = path.basename(real);
   const inline = req.query.inline === '1';
   res.setHeader('Content-Disposition', contentDisposition(name, inline));
@@ -417,7 +425,7 @@ api.get('/local/download', async (req, res) => {
 // Nettoie un chemin relatif envoyé par le navigateur (envoi de dossier) : pas de "..", pas de chemin absolu.
 function safeRel(name) {
   const parts = String(name || '').replace(/\\/g, '/').split('/').filter((x) => x && x !== '.' && x !== '..');
-  if (!parts.length) throw new HttpError(400, 'Nom de fichier invalide');
+  if (!parts.length) throw new HttpError(400, tr('Nom de fichier invalide'));
   return parts.map((x) => x.replace(/[\x00]/g, '')).join('/');
 }
 
@@ -442,7 +450,7 @@ function handleUpload(req, res, target) {
       if (failed) return reject(failed);
       resolve(saved);
     });
-    req.on('aborted', () => reject(new HttpError(499, 'Envoi interrompu')));
+    req.on('aborted', () => reject(new HttpError(499, tr('Envoi interrompu'))));
     req.pipe(bb);
   }).then((saved) => res.json({ ok: true, saved }));
 }
@@ -469,7 +477,7 @@ api.post('/local/upload', async (req, res) => {
       stream.on('error', reject);
       ws.on('error', (e) => { stream.resume(); reject(e); });
       ws.on('finish', resolve);
-      req.on('aborted', () => { ws.destroy(); reject(new HttpError(499, 'Envoi interrompu')); });
+      req.on('aborted', () => { ws.destroy(); reject(new HttpError(499, tr('Envoi interrompu'))); });
       stream.pipe(ws);
     }).catch(async (e) => { await fsp.rm(tmp, { force: true }).catch(() => {}); throw e.code ? localfs.explainWrite(e, v) : e; });
     await fsp.rename(tmp, real);
@@ -482,7 +490,7 @@ api.post('/local/upload', async (req, res) => {
 api.post('/remote/:id/upload', async (req, res) => {
   const c = conn(req);
   const base = rp(req.query.path);
-  if (!base) throw new HttpError(400, 'Dossier distant manquant');
+  if (!base) throw new HttpError(400, tr('Dossier distant manquant'));
   const policy = req.query.onExists || 'rename';
   const ch = await c.channel();
   try {
@@ -515,9 +523,9 @@ api.get('/transfers', (req, res) => res.json(queue.list()));
 api.post('/transfers', (req, res) => {
   const b = req.body || {};
   const items = Array.isArray(b.items) ? b.items : [];
-  if (!items.length) throw new HttpError(400, 'Aucun élément');
+  if (!items.length) throw new HttpError(400, tr('Aucun élément'));
   for (const it of items) {
-    if (!it.src || !it.dst) throw new HttpError(400, 'Élément invalide');
+    if (!it.src || !it.dst) throw new HttpError(400, tr('Élément invalide'));
     if (b.dir === 'up') localfs.real(it.src); else localfs.real(it.dst);
   }
   res.json({ ids: queue.add(b.siteId, b.dir, items, b.onExists) });
@@ -528,7 +536,7 @@ api.post('/transfers/remove', (req, res) => { queue.remove(req.body.ids || []); 
 api.post('/transfers/clear', (req, res) => { queue.clear(req.body.statuses); res.json({ ok: true }); });
 api.post('/transfers/pause', (req, res) => { queue.setPaused(!!req.body.paused); res.json({ ok: true, paused: queue.paused }); });
 
-api.use((req, res, next) => next(new HttpError(404, 'Route inconnue')));
+api.use((req, res, next) => next(new HttpError(404, tr('Route inconnue'))));
 
 app.use('/api', api);
 
@@ -548,7 +556,7 @@ app.use((err, req, res, next) => {
   const status = err.status || err.statusCode || 500;
   if (status >= 500 && !(err instanceof HttpError)) console.error('[erreur]', req.method, req.path, err);
   if (res.headersSent) return res.destroy();
-  res.status(status).json({ error: err.message || 'Erreur', code: err.code || null, data: err.data || null });
+  res.status(status).json({ error: err.message || tr('Erreur'), code: err.code || null, data: err.data || null });
 });
 
 // ---------- WebSocket (progression en temps réel) ----------

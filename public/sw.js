@@ -2,7 +2,7 @@
 const VERSION = 'sftpad-v1.2.0';
 const SHELL = [
   './', 'index.html', 'style.css', 'app.js', 'manifest.webmanifest',
-  'js/util.js', 'js/api.js', 'js/ui.js', 'js/pane.js', 'js/queue.js', 'js/sites.js',
+  'js/i18n.js', 'js/util.js', 'js/api.js', 'js/ui.js', 'js/pane.js', 'js/queue.js', 'js/sites.js',
   'icons/icon.svg', 'icons/icon-192.png', 'icons/icon-512.png',
 ];
 

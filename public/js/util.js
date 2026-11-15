@@ -1,4 +1,6 @@
 // Utilitaires de formatage et de chemins.
+import { t, lang, LOCALE } from './i18n.js';
+
 export const $ = (sel, root = document) => root.querySelector(sel);
 export const $$ = (sel, root = document) => [...root.querySelectorAll(sel)];
 
@@ -37,12 +39,14 @@ export function icon(name, cls = '') {
   return s;
 }
 
-const nf1 = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 1 });
-const nf0 = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 0 });
+const nf1 = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 1 });
+const nf0 = new Intl.NumberFormat(LOCALE, { maximumFractionDigits: 0 });
+// Unités binaires : octets en français (o, Kio…), bytes en anglais (B, KiB…).
+const UNITS = lang === 'en' ? ['B', 'KiB', 'MiB', 'GiB', 'TiB', 'PiB'] : ['o', 'Kio', 'Mio', 'Gio', 'Tio', 'Pio'];
 export function size(n) {
   if (n == null || isNaN(n)) return '';
-  if (n < 1024) return `${n} o`;
-  const u = ['Kio', 'Mio', 'Gio', 'Tio', 'Pio'];
+  if (n < 1024) return `${n} ${UNITS[0]}`;
+  const u = UNITS.slice(1);
   let i = -1;
   do { n /= 1024; i++; } while (n >= 1024 && i < u.length - 1);
   return `${n < 10 ? nf1.format(n) : nf0.format(n)} ${u[i]}`;
@@ -55,16 +59,16 @@ export function eta(sec) {
   return `${Math.floor(sec / 3600)} h ${String(Math.floor((sec % 3600) / 60)).padStart(2, '0')}`;
 }
 
-const dfToday = new Intl.DateTimeFormat('fr-FR', { hour: '2-digit', minute: '2-digit' });
-const dfYear = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short' });
-const dfFull = new Intl.DateTimeFormat('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-const dfLong = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'medium', timeStyle: 'short' });
+const dfToday = new Intl.DateTimeFormat(LOCALE, { hour: '2-digit', minute: '2-digit' });
+const dfYear = new Intl.DateTimeFormat(LOCALE, { day: 'numeric', month: 'short' });
+const dfFull = new Intl.DateTimeFormat(LOCALE, { day: '2-digit', month: '2-digit', year: 'numeric' });
+const dfLong = new Intl.DateTimeFormat(LOCALE, { dateStyle: 'medium', timeStyle: 'short' });
 export function date(ms, long = false) {
   if (!ms) return '';
   const d = new Date(ms);
   if (long) return dfLong.format(d);
   const now = new Date();
-  if (d.toDateString() === now.toDateString()) return `Aujourd'hui ${dfToday.format(d)}`;
+  if (d.toDateString() === now.toDateString()) return t("Aujourd'hui {time}", { time: dfToday.format(d) });
   if (d.getFullYear() === now.getFullYear()) return `${dfYear.format(d)} ${dfToday.format(d)}`;
   return dfFull.format(d);
 }

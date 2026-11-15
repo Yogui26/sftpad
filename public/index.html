@@ -69,9 +69,9 @@
     <form class="auth-card" id="auth-form">
       <img src="icons/icon.svg" alt="" class="auth-logo">
       <h1>SFTPad</h1>
-      <p class="muted" id="auth-sub">Connexion</p>
-      <label class="field"><span>Mot de passe</span><input type="password" id="auth-pw" autocomplete="current-password" required></label>
-      <label class="field" id="auth-pw2-wrap" hidden><span>Confirmer</span><input type="password" id="auth-pw2" autocomplete="new-password"></label>
+      <p class="muted" id="auth-sub" data-i18n>Connexion</p>
+      <label class="field"><span data-i18n>Mot de passe</span><input type="password" id="auth-pw" autocomplete="current-password" required></label>
+      <label class="field" id="auth-pw2-wrap" hidden><span data-i18n>Confirmer</span><input type="password" id="auth-pw2" autocomplete="new-password"></label>
       <p class="error" id="auth-err" hidden></p>
       <button class="btn primary block" type="submit" id="auth-btn">Se connecter</button>
     </form>
@@ -83,8 +83,8 @@
       <button class="site-btn" id="site-btn" aria-label="Sites">
         <span class="site-dot" id="site-dot"></span>
         <span class="site-text">
-          <span class="site-name" id="site-name">Aucun site</span>
-          <span class="site-sub" id="site-sub">Toucher pour choisir</span>
+          <span class="site-name" id="site-name" data-i18n>Aucun site</span>
+          <span class="site-sub" id="site-sub" data-i18n>Toucher pour choisir</span>
         </span>
         <svg class="ico sm"><use href="#i-chevdown"/></svg>
       </button>
@@ -114,7 +114,7 @@
       <button class="icon-btn" data-act="sel-all" aria-label="Tout sélectionner" title="Tout sélectionner"><svg class="ico"><use href="#i-selectall"/></svg></button>
       <button class="icon-btn" data-act="sel-delete" aria-label="Supprimer" title="Supprimer"><svg class="ico"><use href="#i-trash"/></svg></button>
       <button class="icon-btn" data-act="sel-more" aria-label="Plus" title="Plus d'actions"><svg class="ico"><use href="#i-more"/></svg></button>
-      <button class="btn primary" data-act="sel-transfer" id="sel-transfer"><svg class="ico sm"><use href="#i-send"/></svg><span>Transférer</span></button>
+      <button class="btn primary" data-act="sel-transfer" id="sel-transfer"><svg class="ico sm"><use href="#i-send"/></svg><span data-i18n>Transférer</span></button>
     </div>
 
     <!-- Dock des transferts -->
@@ -122,7 +122,7 @@
       <div class="dock-bar"><div class="dock-fill" id="dock-fill"></div></div>
       <div class="dock-row">
         <svg class="ico sm"><use href="#i-queue"/></svg>
-        <span id="dock-text">Transferts</span>
+        <span id="dock-text" data-i18n>Transferts</span>
         <span class="spacer"></span>
         <span id="dock-speed" class="muted"></span>
         <svg class="ico sm"><use href="#i-chevdown" transform="rotate(180 12 12)"/></svg>

@@ -4,6 +4,7 @@
 const fs = require('fs');
 const fsp = fs.promises;
 const path = require('path');
+const { tr } = require('./i18n');
 
 const DATA_DIR = path.resolve(process.env.DATA_DIR || '/data');
 
@@ -24,7 +25,7 @@ function virt(p) {
 function real(p) {
   const v = virt(p);
   const r = path.join(DATA_DIR, v);
-  if (r !== DATA_DIR && !r.startsWith(DATA_DIR + path.sep)) throw new HttpError(400, 'Chemin hors du stockage');
+  if (r !== DATA_DIR && !r.startsWith(DATA_DIR + path.sep)) throw new HttpError(400, tr('Chemin hors du stockage'));
   return r;
 }
 
@@ -66,12 +67,12 @@ async function mkdir(p) {
 
 async function rename(from, to) {
   const dst = real(to);
-  if (fs.existsSync(dst)) throw new HttpError(409, 'La destination existe déjà');
+  if (fs.existsSync(dst)) throw new HttpError(409, tr('La destination existe déjà'));
   await fsp.rename(real(from), dst).catch(mapErr);
 }
 
 async function remove(p) {
-  if (virt(p) === '/') throw new HttpError(400, 'Impossible de supprimer la racine');
+  if (virt(p) === '/') throw new HttpError(400, tr('Impossible de supprimer la racine'));
   await fsp.rm(real(p), { recursive: true, force: false }).catch(mapErr);
 }
 
@@ -88,15 +89,15 @@ async function diskInfo() {
 
 function mapErr(e) {
   const map = {
-    ENOENT: [404, 'Fichier ou dossier introuvable'],
-    EACCES: [403, 'Permission refusée'],
-    EPERM: [403, 'Opération non permise'],
-    EEXIST: [409, 'Existe déjà'],
-    ENOTEMPTY: [409, 'Dossier non vide'],
-    ENOTDIR: [400, "N'est pas un dossier"],
-    EISDIR: [400, 'Est un dossier'],
-    ENOSPC: [507, 'Plus de place sur le disque'],
-    EXDEV: [400, 'Déplacement entre deux volumes impossible, utilisez copier'],
+    ENOENT: [404, tr('Fichier ou dossier introuvable')],
+    EACCES: [403, tr('Permission refusée')],
+    EPERM: [403, tr('Opération non permise')],
+    EEXIST: [409, tr('Existe déjà')],
+    ENOTEMPTY: [409, tr('Dossier non vide')],
+    ENOTDIR: [400, tr("N'est pas un dossier")],
+    EISDIR: [400, tr('Est un dossier')],
+    ENOSPC: [507, tr('Plus de place sur le disque')],
+    EXDEV: [400, tr('Déplacement entre deux volumes impossible, utilisez copier')],
   };
   const m = map[e.code];
   if (m) throw new HttpError(m[0], m[1], e.code);
@@ -111,11 +112,11 @@ function explainWrite(e, vpath) {
   if (!e || !e.code || e instanceof HttpError) return e;
   const dir = path.posix.dirname(virt(vpath));
   if (e.code === 'EACCES' || e.code === 'EPERM') {
-    return new HttpError(403, `Écriture refusée dans « ${dir} » du stockage local : SFTPad tourne en tant que ${whoami()} et n'a pas le droit d'y écrire. `
-      + 'Choisissez un dossier accessible (sur Unraid : un partage, pas la racine de /mnt/user) ou corrigez les droits / PUID-PGID.', e.code);
+    return new HttpError(403, tr("Écriture refusée dans « {dir} » du stockage local : SFTPad tourne en tant que {user} et n'a pas le droit d'y écrire. "
+      + 'Choisissez un dossier accessible (sur Unraid : un partage, pas la racine de /mnt/user) ou corrigez les droits / PUID-PGID.', { dir, user: whoami() }), e.code);
   }
-  if (e.code === 'ENOSPC') return new HttpError(507, `Plus de place sur le disque (${dir})`, e.code);
-  if (e.code === 'EROFS') return new HttpError(403, `« ${dir} » est en lecture seule`, e.code);
+  if (e.code === 'ENOSPC') return new HttpError(507, tr('Plus de place sur le disque ({dir})', { dir }), e.code);
+  if (e.code === 'EROFS') return new HttpError(403, tr('« {dir} » est en lecture seule', { dir }), e.code);
   try { mapErr(e); } catch (m) { return m; }
   return e;
 }

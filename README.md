@@ -1,5 +1,7 @@
 # SFTPad
 
+🇫🇷 Français · [🇬🇧 English](README.en.md)
+
 Client **SFTP web, tactile et installable (PWA)**, inspiré de FileZilla, pour usage personnel. Il tourne sur un serveur
 (Docker sur Unraid, LXC Proxmox ou tout hôte Docker) : le côté « local » est le **stockage monté** dans le conteneur
 (NAS, disque, partages), le côté « distant » est votre serveur SFTP. Les transferts sont exécutés **par le serveur** : ils continuent
@@ -29,6 +31,7 @@ même si vous fermez l'onglet ou verrouillez le téléphone.
   audio, PDF et textes.
 - Renommer, déplacer, supprimer (récursif), créer un dossier, **permissions (chmod)**, filtre, tri, fichiers cachés,
   thème clair / sombre / auto.
+- Interface en **français et en anglais** : langue du navigateur par défaut, modifiable dans **Réglages → Langue**.
 - Authentification intégrée (mot de passe haché scrypt, sessions de 30 jours, anti force brute), ou déléguée
   à votre reverse proxy (`AUTH=none`).
 
@@ -104,7 +107,7 @@ Vous préférez Docker dans un LXC ? Créez un LXC avec `nesting=1`, installez D
 | `PUID` / `PGID` / `UMASK` | `99` / `100` / `002` | Docker uniquement : utilisateur et masque des fichiers créés |
 
 Réglages modifiables dans l'interface : transferts simultanés (1 à 10), comportement si le fichier existe, permissions des
-fichiers créés en local, thème.
+fichiers créés en local, thème, langue (par appareil).
 
 ## Accès distant et HTTPS
 
@@ -180,10 +183,14 @@ CONFIG_DIR=./config DATA_DIR=./data npm start   # http://localhost:8080
 
 Aucune étape de compilation : backend Node.js (Express 5, ssh2, ws), interface en JavaScript natif (modules ES).
 
+Traductions : les textes français servent de clés (`t('Annuler')`), les équivalents anglais sont dans
+`public/js/i18n.js` (interface) et `server/i18n.js` (messages d'erreur du serveur).
+
 ```
 server/   index.js (API, auth, WebSocket) · sftp.js (connexions, clés d'hôte) · transfers.js (file) ·
-          fastio.js (E/S SFTP en pipeline avec reprise) · localfs.js (stockage local) · crypto.js · store.js
-public/   index.html · style.css · app.js · js/ (pane, queue, sites, ui, api, util) · sw.js · manifest
+          fastio.js (E/S SFTP en pipeline avec reprise) · localfs.js (stockage local) · crypto.js · store.js ·
+          i18n.js (messages d'erreur fr/en)
+public/   index.html · style.css · app.js · js/ (pane, queue, sites, ui, api, util, i18n) · sw.js · manifest
 deploy/   docker/ · unraid/ · lxc/ · proxmox/
 ```
 

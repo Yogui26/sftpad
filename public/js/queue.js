@@ -1,13 +1,14 @@
 // File de transferts : état temps réel (WebSocket), dock en bas d'écran et feuille détaillée.
 import { h, icon, size, speed, eta, $ } from './util.js';
 import { post } from './api.js';
+import { t, tn } from './i18n.js';
 import { sheet, errToast, confirm } from './ui.js';
 
 const ACTIVE = new Set(['queued', 'running']);
 const TABS = [
-  { key: 'active', label: 'En cours', test: (j) => ACTIVE.has(j.status) },
-  { key: 'error', label: 'Échecs', test: (j) => j.status === 'error' || j.status === 'canceled' },
-  { key: 'done', label: 'Terminés', test: (j) => j.status === 'done' || j.status === 'skipped' },
+  { key: 'active', label: t('En cours'), test: (j) => ACTIVE.has(j.status) },
+  { key: 'error', label: t('Échecs'), test: (j) => j.status === 'error' || j.status === 'canceled' },
+  { key: 'done', label: t('Terminés'), test: (j) => j.status === 'done' || j.status === 'skipped' },
 ];
 const RENDER_LIMIT = 300;
 
@@ -80,8 +81,8 @@ export class Queue {
     const pct = s.bytes ? Math.min(100, (s.done / s.bytes) * 100) : 0;
     $('#dock-fill').style.width = `${pct}%`;
     $('#dock-text').textContent = this.paused
-      ? `En pause · ${s.active} en attente`
-      : `${s.active} transfert${s.active > 1 ? 's' : ''} · ${size(s.done)} / ${size(s.bytes)}`;
+      ? t('En pause · {n} en attente', { n: s.active })
+      : `${tn(s.active, '{n} transfert', '{n} transferts')} · ${size(s.done)} / ${size(s.bytes)}`;
     const left = s.speed > 0 ? eta((s.bytes - s.done) / s.speed) : '';
     $('#dock-speed').textContent = [speed(s.speed), left].filter(Boolean).join(' · ');
   }
@@ -95,7 +96,7 @@ export class Queue {
     this.toolsEl = h('div.qtools');
     this.listEl = h('ul.qlist');
     this.view = sheet({
-      title: 'Transferts',
+      title: t('Transferts'),
       wide: true,
       body: this.listEl,
       onClose: () => { this.view = null; this.nodes = null; this.renderDock(); },
@@ -117,21 +118,21 @@ export class Queue {
     // Outils
     const tools = [];
     if (this.tab === 'active') {
-      tools.push(h('button.btn.small', { onclick: () => post('transfers/pause', { paused: !this.paused }).catch(errToast) }, icon(this.paused ? 'play' : 'pause', 'sm'), this.paused ? 'Reprendre' : 'Pause'));
+      tools.push(h('button.btn.small', { onclick: () => post('transfers/pause', { paused: !this.paused }).catch(errToast) }, icon(this.paused ? 'play' : 'pause', 'sm'), this.paused ? t('Reprendre') : t('Pause')));
       if (all.some((j) => ACTIVE.has(j.status) && !j.device)) {
         tools.push(h('button.btn.small', {
           onclick: async () => {
-            if (await confirm({ title: 'Tout annuler', message: 'Annuler tous les transferts en cours et en attente ?', ok: 'Tout annuler', danger: true })) {
+            if (await confirm({ title: t('Tout annuler'), message: t('Annuler tous les transferts en cours et en attente ?'), ok: t('Tout annuler'), danger: true })) {
               post('transfers/cancel', { ids: [...this.jobs.values()].filter((j) => ACTIVE.has(j.status)).map((j) => j.id) }).catch(errToast);
             }
           },
-        }, icon('x', 'sm'), 'Tout annuler'));
+        }, icon('x', 'sm'), t('Tout annuler')));
       }
     } else if (this.tab === 'error') {
-      tools.push(h('button.btn.small', { onclick: () => post('transfers/retry', { ids: [...this.jobs.values()].filter((j) => j.status === 'error' || j.status === 'canceled').map((j) => j.id) }).catch(errToast) }, icon('retry', 'sm'), 'Tout réessayer'));
-      tools.push(h('button.btn.small', { onclick: () => { post('transfers/clear', { statuses: ['error', 'canceled'] }).catch(errToast); this.clearDevice(['error', 'canceled']); } }, icon('trash', 'sm'), 'Vider'));
+      tools.push(h('button.btn.small', { onclick: () => post('transfers/retry', { ids: [...this.jobs.values()].filter((j) => j.status === 'error' || j.status === 'canceled').map((j) => j.id) }).catch(errToast) }, icon('retry', 'sm'), t('Tout réessayer')));
+      tools.push(h('button.btn.small', { onclick: () => { post('transfers/clear', { statuses: ['error', 'canceled'] }).catch(errToast); this.clearDevice(['error', 'canceled']); } }, icon('trash', 'sm'), t('Vider')));
     } else {
-      tools.push(h('button.btn.small', { onclick: () => { post('transfers/clear', { statuses: ['done', 'skipped'] }).catch(errToast); this.clearDevice(['done', 'skipped']); } }, icon('trash', 'sm'), 'Vider la liste'));
+      tools.push(h('button.btn.small', { onclick: () => { post('transfers/clear', { statuses: ['done', 'skipped'] }).catch(errToast); this.clearDevice(['done', 'skipped']); } }, icon('trash', 'sm'), t('Vider la liste')));
     }
     this.toolsEl.replaceChildren(...tools);
 
@@ -155,12 +156,12 @@ export class Queue {
     let more = this.listEl.querySelector('.qmore');
     if (items.length > RENDER_LIMIT) {
       if (!more) { more = h('li.qempty.qmore'); this.listEl.append(more); }
-      more.textContent = `… et ${items.length - RENDER_LIMIT} autres`;
+      more.textContent = t('… et {n} autres', { n: items.length - RENDER_LIMIT });
       this.listEl.append(more);
     } else if (more) more.remove();
     let empty = this.listEl.querySelector('.qempty:not(.qmore)');
     if (!shown.length) {
-      if (!empty) this.listEl.append(h('li.qempty', { tab: this.tab }, this.tab === 'active' ? 'Aucun transfert en cours' : this.tab === 'error' ? 'Aucun échec' : 'Rien pour le moment'));
+      if (!empty) this.listEl.append(h('li.qempty', { tab: this.tab }, this.tab === 'active' ? t('Aucun transfert en cours') : this.tab === 'error' ? t('Aucun échec') : t('Rien pour le moment')));
     } else if (empty) empty.remove();
     void full;
   }
@@ -183,7 +184,7 @@ export class Queue {
     const d = node.querySelector('.dir');
     if (d._ic !== dirIcon) { d.replaceChildren(icon(dirIcon, 'sm')); d._ic = dirIcon; }
     node.querySelector('b').textContent = j.name;
-    const from = j.device ? "Depuis l'appareil" : (j.dir === 'up' ? 'Local → ' : `${j.siteName} → `);
+    const from = j.device ? t("Depuis l'appareil") : (j.dir === 'up' ? 'Local → ' : `${j.siteName} → `);
     node.querySelector('.sub').textContent = `${from}${j.device ? ' → ' + j.dst : j.dst}`;
     const bar = node.querySelector('.bar');
     const showBar = j.status === 'running' && j.kind !== 'dir';
@@ -193,22 +194,22 @@ export class Queue {
     stat.classList.toggle('e', j.status === 'error');
     let txt = '';
     if (j.status === 'running') {
-      txt = j.kind === 'dir' ? 'Analyse du dossier…' : `${size(j.done)} / ${size(j.size)} · ${speed(j.speed) || '…'}${j.speed > 0 ? ' · ' + eta((j.size - j.done) / j.speed) : ''}`;
-    } else if (j.status === 'queued') txt = j.error ? j.error : `En attente · ${j.kind === 'dir' ? 'dossier' : size(j.size)}`;
-    else if (j.status === 'done') txt = j.kind === 'dir' ? `Dossier : ${j.size} élément${j.size > 1 ? 's' : ''} ajouté${j.size > 1 ? 's' : ''}` : `Terminé · ${size(j.size)}`;
-    else if (j.status === 'skipped') txt = j.error || 'Ignoré';
-    else if (j.status === 'canceled') txt = 'Annulé';
-    else if (j.status === 'error') txt = j.error || 'Erreur';
+      txt = j.kind === 'dir' ? t('Analyse du dossier…') : `${size(j.done)} / ${size(j.size)} · ${speed(j.speed) || '…'}${j.speed > 0 ? ' · ' + eta((j.size - j.done) / j.speed) : ''}`;
+    } else if (j.status === 'queued') txt = j.error ? j.error : t('En attente · {what}', { what: j.kind === 'dir' ? t('dossier') : size(j.size) });
+    else if (j.status === 'done') txt = j.kind === 'dir' ? tn(j.size, 'Dossier : {n} élément ajouté', 'Dossier : {n} éléments ajoutés') : t('Terminé · {size}', { size: size(j.size) });
+    else if (j.status === 'skipped') txt = j.error || t('Ignoré');
+    else if (j.status === 'canceled') txt = t('Annulé');
+    else if (j.status === 'error') txt = j.error || t('Erreur');
     stat.textContent = txt;
     const acts = node.querySelector('.acts');
     const btns = [];
     if (j.device) {
-      if (ACTIVE.has(j.status) && j.abort) btns.push(h('button.icon-btn', { 'aria-label': 'Annuler', onclick: () => j.abort() }, icon('x')));
-      else if (!ACTIVE.has(j.status)) btns.push(h('button.icon-btn', { 'aria-label': 'Retirer', onclick: () => { this.device.delete(j.id); this.changed(); } }, icon('trash')));
-    } else if (ACTIVE.has(j.status)) btns.push(h('button.icon-btn', { 'aria-label': 'Annuler', title: 'Annuler', onclick: () => post('transfers/cancel', { ids: [j.id] }).catch(errToast) }, icon('x')));
+      if (ACTIVE.has(j.status) && j.abort) btns.push(h('button.icon-btn', { 'aria-label': t('Annuler'), onclick: () => j.abort() }, icon('x')));
+      else if (!ACTIVE.has(j.status)) btns.push(h('button.icon-btn', { 'aria-label': t('Retirer'), onclick: () => { this.device.delete(j.id); this.changed(); } }, icon('trash')));
+    } else if (ACTIVE.has(j.status)) btns.push(h('button.icon-btn', { 'aria-label': t('Annuler'), title: t('Annuler'), onclick: () => post('transfers/cancel', { ids: [j.id] }).catch(errToast) }, icon('x')));
     else {
-      if (j.status === 'error' || j.status === 'canceled') btns.push(h('button.icon-btn', { 'aria-label': 'Réessayer', title: 'Réessayer', onclick: () => post('transfers/retry', { ids: [j.id] }).catch(errToast) }, icon('retry')));
-      btns.push(h('button.icon-btn', { 'aria-label': 'Retirer', title: 'Retirer de la liste', onclick: () => post('transfers/remove', { ids: [j.id] }).catch(errToast) }, icon('trash')));
+      if (j.status === 'error' || j.status === 'canceled') btns.push(h('button.icon-btn', { 'aria-label': t('Réessayer'), title: t('Réessayer'), onclick: () => post('transfers/retry', { ids: [j.id] }).catch(errToast) }, icon('retry')));
+      btns.push(h('button.icon-btn', { 'aria-label': t('Retirer'), title: t('Retirer de la liste'), onclick: () => post('transfers/remove', { ids: [j.id] }).catch(errToast) }, icon('trash')));
     }
     acts.replaceChildren(...btns);
   }

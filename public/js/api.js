@@ -1,7 +1,9 @@
 // Accès à l'API et au WebSocket.
+import { t, lang } from './i18n.js';
+
 export class ApiError extends Error {
   constructor(status, body) {
-    super((body && body.error) || `Erreur ${status}`);
+    super((body && body.error) || t('Erreur {status}', { status }));
     this.status = status;
     this.code = body && body.code;
     this.data = body && body.data;
@@ -12,10 +14,10 @@ let onUnauthorized = () => {};
 export const setUnauthorizedHandler = (fn) => { onUnauthorized = fn; };
 
 export async function api(method, url, body) {
-  const opt = { method, headers: { 'X-SFTPad': '1' }, credentials: 'same-origin' };
+  const opt = { method, headers: { 'X-SFTPad': '1', 'X-SFTPad-Lang': lang }, credentials: 'same-origin' };
   if (body !== undefined) { opt.headers['Content-Type'] = 'application/json'; opt.body = JSON.stringify(body); }
   let res;
-  try { res = await fetch('api/' + url, opt); } catch { throw new ApiError(0, { error: 'Serveur injoignable' }); }
+  try { res = await fetch('api/' + url, opt); } catch { throw new ApiError(0, { error: t('Serveur injoignable') }); }
   let data = null;
   const ct = res.headers.get('content-type') || '';
   if (ct.includes('json')) data = await res.json().catch(() => null);
@@ -40,6 +42,7 @@ export function uploadFiles(url, files, onProgress) {
   const promise = new Promise((resolve, reject) => {
     xhr.open('POST', 'api/' + url);
     xhr.setRequestHeader('X-SFTPad', '1');
+    xhr.setRequestHeader('X-SFTPad-Lang', lang);
     xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress && onProgress(e.loaded, e.total); };
     xhr.onload = () => {
       let data = null;
@@ -47,8 +50,8 @@ export function uploadFiles(url, files, onProgress) {
       if (xhr.status >= 200 && xhr.status < 300) resolve(data);
       else reject(new ApiError(xhr.status, data));
     };
-    xhr.onerror = () => reject(new ApiError(0, { error: 'Envoi interrompu' }));
-    xhr.onabort = () => reject(new ApiError(499, { error: 'Envoi annulé' }));
+    xhr.onerror = () => reject(new ApiError(0, { error: t('Envoi interrompu') }));
+    xhr.onabort = () => reject(new ApiError(499, { error: t('Envoi annulé') }));
     xhr.send(fd);
   });
   promise.abort = () => xhr.abort();

@@ -2,6 +2,7 @@
 // E/S SFTP en pipeline : plusieurs requêtes en vol pour saturer le lien, avec support de la reprise
 // (offset de départ), ce que fastGet/fastPut de ssh2 ne permettent pas.
 const { Readable } = require('stream');
+const { tr } = require('./i18n');
 
 const CHUNK = 32768;       // taille sûre pour tous les serveurs SFTP
 const CONCURRENCY = 64;    // 64 × 32 Kio = 2 Mio en vol
@@ -40,7 +41,7 @@ async function* orderedChunks(readAt, start, end, { chunk = CHUNK, concurrency =
       const len = Math.min(chunk, end - pos);
       next += len;
       const pr = readFull(readAt, pos, len).then((b) => {
-        if (b.length < len) throw new Error('Fin de fichier inattendue (fichier modifié pendant le transfert ?)');
+        if (b.length < len) throw new Error(tr('Fin de fichier inattendue (fichier modifié pendant le transfert ?)'));
         return b;
       });
       pr.catch(() => {}); // évite un rejet non géré si un morceau précédent échoue d'abord
@@ -106,7 +107,7 @@ async function upload(ch, localPath, remotePath, { start = 0, size, onProgress }
       const blen = Math.min(BLOCK, size - pos);
       const block = Buffer.allocUnsafe(blen);
       const { bytesRead } = await fd.read(block, 0, blen, pos);
-      if (bytesRead < blen) throw new Error('Fin de fichier inattendue (fichier modifié pendant le transfert ?)');
+      if (bytesRead < blen) throw new Error(tr('Fin de fichier inattendue (fichier modifié pendant le transfert ?)'));
       for (let off = 0; off < blen; off += CHUNK) {
         if (failed) throw failed;
         const len = Math.min(CHUNK, blen - off);

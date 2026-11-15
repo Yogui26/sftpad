@@ -1,6 +1,7 @@
 // Un panneau de fichiers (local ou distant) : navigation, sélection, gestes tactiles, glisser-déposer.
 import { h, icon, size, date, perms, octal, ftype, typeIcon, previewable, pjoin, pdir, pbase, store, vibrate, isTouch } from './util.js';
 import { get, post, qs } from './api.js';
+import { t, tn, LOCALE } from './i18n.js';
 import { toast, errToast, confirm, prompt, menu, sheet, viewer, downloadUrl } from './ui.js';
 
 const LONG_PRESS = 450;
@@ -39,21 +40,21 @@ export class Pane {
 
   // ---------- Construction du DOM ----------
   build() {
-    const title = this.isLocal ? 'Local' : 'Distant';
+    const title = this.isLocal ? t('Local') : t('Distant');
     this.labelEl = h('span.label', icon(this.isLocal ? 'disk' : 'server', 'sm'), h('span', title));
-    this.btnSearch = h('button.icon-btn', { title: 'Filtrer', 'aria-label': 'Filtrer', onclick: () => this.toggleFilter() }, icon('search'));
-    this.btnNew = h('button.icon-btn', { title: 'Nouveau dossier', 'aria-label': 'Nouveau dossier', onclick: () => this.mkdir() }, icon('newfolder'));
-    this.btnUpload = h('button.icon-btn', { title: "Envoyer depuis l'appareil", 'aria-label': "Envoyer depuis l'appareil", onclick: () => this.app.pickDeviceFiles(this) }, icon('upload'));
-    this.btnRefresh = h('button.icon-btn', { title: 'Actualiser', 'aria-label': 'Actualiser', onclick: () => this.refresh() }, icon('refresh'));
-    this.btnMore = h('button.icon-btn', { title: 'Options', 'aria-label': 'Options', onclick: (e) => this.paneMenu(e) }, icon('more'));
+    this.btnSearch = h('button.icon-btn', { title: t('Filtrer'), 'aria-label': t('Filtrer'), onclick: () => this.toggleFilter() }, icon('search'));
+    this.btnNew = h('button.icon-btn', { title: t('Nouveau dossier'), 'aria-label': t('Nouveau dossier'), onclick: () => this.mkdir() }, icon('newfolder'));
+    this.btnUpload = h('button.icon-btn', { title: t("Envoyer depuis l'appareil"), 'aria-label': t("Envoyer depuis l'appareil"), onclick: () => this.app.pickDeviceFiles(this) }, icon('upload'));
+    this.btnRefresh = h('button.icon-btn', { title: t('Actualiser'), 'aria-label': t('Actualiser'), onclick: () => this.refresh() }, icon('refresh'));
+    this.btnMore = h('button.icon-btn', { title: t('Options'), 'aria-label': t('Options'), onclick: (e) => this.paneMenu(e) }, icon('more'));
     this.crumbs = h('div.crumbs');
-    this.filterInput = h('input', { type: 'search', placeholder: 'Filtrer les noms…', enterkeyhint: 'search', oninput: () => { this.filter = this.filterInput.value.trim().toLowerCase(); this.renderList(); } });
+    this.filterInput = h('input', { type: 'search', placeholder: t('Filtrer les noms…'), enterkeyhint: 'search', oninput: () => { this.filter = this.filterInput.value.trim().toLowerCase(); this.renderList(); } });
     this.filterRow = h('div.filter', { hidden: true }, this.filterInput,
-      h('button.icon-btn', { 'aria-label': 'Fermer le filtre', onclick: () => this.toggleFilter(false) }, icon('x')));
+      h('button.icon-btn', { 'aria-label': t('Fermer le filtre'), onclick: () => this.toggleFilter(false) }, icon('x')));
     this.cols = h('div.cols',
       h('span'),
-      this.colBtn('name', 'Nom'), this.colBtn('size', 'Taille', true), this.colBtn('mtime', 'Modifié'),
-      h('span', 'Droits'), h('span'));
+      this.colBtn('name', t('Nom')), this.colBtn('size', t('Taille'), true), this.colBtn('mtime', t('Modifié')),
+      h('span', t('Droits')), h('span'));
     this.list = h('ul.list', { role: 'listbox', 'aria-multiselectable': 'true' });
     this.loadingEl = h('div.loading', { hidden: true });
     this.wrap = h('div.list-wrap', { tabindex: '0' }, this.cols, this.list);
@@ -140,7 +141,7 @@ export class Pane {
     this.btnNew.disabled = this.btnUpload.disabled = this.btnRefresh.disabled = this.btnSearch.disabled = !this.ready;
     if (!this.isLocal) {
       const s = this.app.site;
-      this.labelEl.lastChild.textContent = s ? s.name : 'Distant';
+      this.labelEl.lastChild.textContent = s ? s.name : t('Distant');
     }
   }
 
@@ -150,14 +151,14 @@ export class Pane {
     this.clearSel(false);
     this.crumbs.replaceChildren();
     this.btnNew.disabled = this.btnUpload.disabled = this.btnRefresh.disabled = this.btnSearch.disabled = true;
-    this.labelEl.lastChild.textContent = 'Distant';
+    this.labelEl.lastChild.textContent = t('Distant');
     const s = this.app.site;
     this.list.replaceChildren(h('li.empty',
       icon('server'),
-      h('h3', s ? s.name : 'Aucun serveur'),
-      h('p', { style: { margin: 0 } }, s ? `${s.username}@${s.host}` : 'Choisissez ou créez un site SFTP pour commencer.'),
-      s ? h('button.btn.primary', { onclick: () => this.app.connect(s.id) }, icon('plug', 'sm'), 'Se connecter')
-        : h('button.btn.primary', { onclick: () => this.app.openSites() }, icon('server', 'sm'), 'Gestionnaire de sites')));
+      h('h3', s ? s.name : t('Aucun serveur')),
+      h('p', { style: { margin: 0 } }, s ? `${s.username}@${s.host}` : t('Choisissez ou créez un site SFTP pour commencer.')),
+      s ? h('button.btn.primary', { onclick: () => this.app.connect(s.id) }, icon('plug', 'sm'), t('Se connecter'))
+        : h('button.btn.primary', { onclick: () => this.app.openSites() }, icon('server', 'sm'), t('Gestionnaire de sites'))));
     this.foot.querySelector('.info').textContent = '';
     this.foot.querySelector('.extra').textContent = '';
   }
@@ -183,7 +184,7 @@ export class Pane {
   visibleEntries() {
     const f = this.filter;
     const { key, dir } = this.sort;
-    const coll = new Intl.Collator('fr', { numeric: true, sensitivity: 'base' });
+    const coll = new Intl.Collator(LOCALE, { numeric: true, sensitivity: 'base' });
     return this.entries
       .filter((e) => (this.showHidden || !e.name.startsWith('.')) && (!f || e.name.toLowerCase().includes(f)))
       .sort((a, b) => {
@@ -201,13 +202,13 @@ export class Pane {
     if (!this.ready) return this.renderDisconnected();
     for (const b of this.cols.querySelectorAll('button')) {
       b.classList.toggle('sorted', b.dataset.key === this.sort.key);
-      b.textContent = { name: 'Nom', size: 'Taille', mtime: 'Modifié' }[b.dataset.key] + (b.dataset.key === this.sort.key ? (this.sort.dir > 0 ? ' ↑' : ' ↓') : '');
+      b.textContent = { name: t('Nom'), size: t('Taille'), mtime: t('Modifié') }[b.dataset.key] + (b.dataset.key === this.sort.key ? (this.sort.dir > 0 ? ' ↑' : ' ↓') : '');
     }
     if (this.error) {
-      this.list.replaceChildren(h('li.empty', icon('x'), h('h3', 'Impossible d\'afficher ce dossier'), h('p', { style: { margin: 0 } }, this.error.message),
+      this.list.replaceChildren(h('li.empty', icon('x'), h('h3', t("Impossible d'afficher ce dossier")), h('p', { style: { margin: 0 } }, this.error.message),
         h('div', { style: { display: 'flex', gap: '8px' } },
-          this.path !== '/' ? h('button.btn', { onclick: () => this.load(pdir(this.path || '/')) }, icon('up', 'sm'), 'Dossier parent') : null,
-          h('button.btn.primary', { onclick: () => this.load(this.path) }, icon('refresh', 'sm'), 'Réessayer'))));
+          this.path !== '/' ? h('button.btn', { onclick: () => this.load(pdir(this.path || '/')) }, icon('up', 'sm'), t('Dossier parent')) : null,
+          h('button.btn.primary', { onclick: () => this.load(this.path) }, icon('refresh', 'sm'), t('Réessayer')))));
       this.foot.querySelector('.info').textContent = '';
       return;
     }
@@ -218,7 +219,7 @@ export class Pane {
     for (const e of items) frag.append(this.row(e));
     if (!items.length) {
       frag.append(h('li.empty', { style: { padding: '36px 24px' } }, icon(this.filter ? 'search' : 'folder'),
-        h('p', { style: { margin: 0 } }, this.filter ? 'Aucun résultat' : 'Dossier vide')));
+        h('p', { style: { margin: 0 } }, this.filter ? t('Aucun résultat') : t('Dossier vide'))));
     }
     this.list.replaceChildren(frag);
     this.root.classList.toggle('selecting', this.selecting || this.sel.size > 0);
@@ -227,14 +228,14 @@ export class Pane {
 
   row(e) {
     const isDir = e.type === 'dir';
-    const t = isDir ? 'dir' : ftype(e.name);
-    const meta = e.up ? 'Dossier parent' : isDir ? date(e.mtime) : `${size(e.size)} · ${date(e.mtime)}`;
+    const kind = isDir ? 'dir' : ftype(e.name);
+    const meta = e.up ? t('Dossier parent') : isDir ? date(e.mtime) : `${size(e.size)} · ${date(e.mtime)}`;
     const li = h('li.row-wrap', { role: 'option' },
       h('div.row', {
         class: `row${isDir ? ' dir' : ''}${e.up ? ' up' : ''}${this.sel.has(e.name) ? ' sel' : ''}${e.name.startsWith('.') && !e.up ? ' hidden-file' : ''}`,
         draggable: !e.up && !isTouch() ? 'true' : null,
       },
-        h('span.ic', { class: `ic t-${t}` }, icon(e.up ? 'up' : isDir ? 'folder' : typeIcon(t))),
+        h('span.ic', { class: `ic t-${kind}` }, icon(e.up ? 'up' : isDir ? 'folder' : typeIcon(kind))),
         h('span.nm', h('span.n', e.up ? '..' : e.name, e.link ? h('span.muted', ' ↪') : null), h('span.m', meta)),
         h('span.x.num', e.up || isDir ? '' : size(e.size)),
         h('span.x', e.up ? '' : date(e.mtime)),
@@ -251,14 +252,14 @@ export class Pane {
     const dirs = items.filter((e) => e.type === 'dir').length;
     const files = items.length - dirs;
     const total = items.reduce((a, e) => a + (e.type === 'dir' ? 0 : e.size), 0);
-    let txt = `${dirs} dossier${dirs > 1 ? 's' : ''}, ${files} fichier${files > 1 ? 's' : ''} · ${size(total)}`;
+    let txt = `${tn(dirs, '{n} dossier', '{n} dossiers')}, ${tn(files, '{n} fichier', '{n} fichiers')} · ${size(total)}`;
     if (this.sel.size) {
       const sz = [...this.sel].reduce((a, n) => { const e = this.entry(n); return a + (e && e.type !== 'dir' ? e.size : 0); }, 0);
-      txt = `${this.sel.size} sélectionné${this.sel.size > 1 ? 's' : ''} · ${size(sz)} — ${txt}`;
+      txt = `${tn(this.sel.size, '{n} sélectionné', '{n} sélectionnés')} · ${size(sz)} — ${txt}`;
     }
     this.foot.querySelector('.info').textContent = txt;
     const extra = this.foot.querySelector('.extra');
-    if (this.isLocal && this.app.disk) extra.textContent = `${size(this.app.disk.free)} libres`;
+    if (this.isLocal && this.app.disk) extra.textContent = t('{size} libres', { size: size(this.app.disk.free) });
     else if (!this.isLocal && this.app.site) extra.textContent = `${this.app.site.username}@${this.app.site.host}`;
   }
 
@@ -342,8 +343,8 @@ export class Pane {
         st.swipe = true;
         st.row = st.li.firstChild;
         st.bg = h('div.swipe-bg',
-          h('span.l', icon(this.isLocal ? 'send' : 'receive', 'sm'), this.isLocal ? 'Envoyer' : 'Télécharger'),
-          h('span.r', 'Actions', icon('more', 'sm')));
+          h('span.l', icon(this.isLocal ? 'send' : 'receive', 'sm'), this.isLocal ? t('Envoyer') : t('Télécharger')),
+          h('span.r', t('Actions'), icon('more', 'sm')));
         st.li.classList.add('row-wrap');
         st.li.style.position = 'relative';
         st.li.style.overflow = 'hidden';
@@ -531,7 +532,7 @@ export class Pane {
 
   // ---------- Opérations ----------
   async mkdir() {
-    const name = await prompt({ title: 'Nouveau dossier', label: 'Nom du dossier', ok: 'Créer', validate: validName });
+    const name = await prompt({ title: t('Nouveau dossier'), label: t('Nom du dossier'), ok: t('Créer'), validate: validName });
     if (!name) return;
     try {
       await post(`${this.base()}/mkdir`, { path: pjoin(this.path, name) });
@@ -543,7 +544,7 @@ export class Pane {
 
   async rename(name) {
     const dot = name.lastIndexOf('.');
-    const nn = await prompt({ title: 'Renommer', label: 'Nouveau nom', value: name, ok: 'Renommer', validate: validName, select: dot > 0 && this.entry(name)?.type !== 'dir' ? [0, dot] : null });
+    const nn = await prompt({ title: t('Renommer'), label: t('Nouveau nom'), value: name, ok: t('Renommer'), validate: validName, select: dot > 0 && this.entry(name)?.type !== 'dir' ? [0, dot] : null });
     if (!nn || nn === name) return;
     try {
       await post(`${this.base()}/rename`, { from: pjoin(this.path, name), to: pjoin(this.path, nn) });
@@ -553,7 +554,7 @@ export class Pane {
   }
 
   async move(names) {
-    const dest = await prompt({ title: `Déplacer ${names.length > 1 ? names.length + ' éléments' : '« ' + names[0] + ' »'}`, label: 'Dossier de destination (sur ce même côté)', value: this.path, ok: 'Déplacer', validate: (v) => (!v.startsWith('/') ? 'Chemin absolu requis (commence par /)' : null) });
+    const dest = await prompt({ title: names.length > 1 ? t('Déplacer {n} éléments', { n: names.length }) : t('Déplacer « {name} »', { name: names[0] }), label: t('Dossier de destination (sur ce même côté)'), value: this.path, ok: t('Déplacer'), validate: (v) => (!v.startsWith('/') ? t('Chemin absolu requis (commence par /)') : null) });
     if (!dest || dest === this.path) return;
     await this.moveInto(names, dest);
   }
@@ -563,11 +564,11 @@ export class Pane {
     const errs = [];
     for (const n of names) {
       const from = pjoin(this.path, n);
-      if (dir === from || dir.startsWith(from + '/')) { errs.push(`${n} : impossible de déplacer un dossier dans lui-même`); continue; }
-      try { await post(`${this.base()}/rename`, { from, to: pjoin(dir, n) }); } catch (e) { errs.push(`${n} : ${e.message}`); }
+      if (dir === from || dir.startsWith(from + '/')) { errs.push(t('{name} : impossible de déplacer un dossier dans lui-même', { name: n })); continue; }
+      try { await post(`${this.base()}/rename`, { from, to: pjoin(dir, n) }); } catch (e) { errs.push(t('{name} : {error}', { name: n, error: e.message })); }
     }
     if (errs.length) toast(errs.join('\n'), 'err');
-    else toast(`${names.length} élément${names.length > 1 ? 's' : ''} déplacé${names.length > 1 ? 's' : ''}`, 'ok');
+    else toast(tn(names.length, '{n} élément déplacé', '{n} éléments déplacés'), 'ok');
     this.refresh();
   }
 
@@ -575,14 +576,15 @@ export class Pane {
     if (!names.length) return;
     const dirs = names.filter((n) => this.entry(n)?.type === 'dir').length;
     const msg = names.length === 1
-      ? `Supprimer définitivement « ${names[0]} »${dirs ? ' et tout son contenu' : ''} ?`
-      : `Supprimer définitivement ${names.length} éléments${dirs ? ` (dont ${dirs} dossier${dirs > 1 ? 's' : ''} et leur contenu)` : ''} ?`;
-    const ok = await confirm({ title: this.isLocal ? 'Supprimer (local)' : 'Supprimer (serveur)', message: msg, ok: 'Supprimer', danger: true });
+      ? (dirs ? t('Supprimer définitivement « {name} » et tout son contenu ?', { name: names[0] }) : t('Supprimer définitivement « {name} » ?', { name: names[0] }))
+      : (dirs ? tn(dirs, 'Supprimer définitivement {count} éléments (dont {n} dossier et leur contenu) ?', 'Supprimer définitivement {count} éléments (dont {n} dossiers et leur contenu) ?', { count: names.length })
+        : t('Supprimer définitivement {n} éléments ?', { n: names.length }));
+    const ok = await confirm({ title: this.isLocal ? t('Supprimer (local)') : t('Supprimer (serveur)'), message: msg, ok: t('Supprimer'), danger: true });
     if (!ok) return;
     this.setLoading(true);
     try {
       await post(`${this.base()}/delete`, { paths: names.map((n) => pjoin(this.path, n)) });
-      toast(`${names.length} élément${names.length > 1 ? 's' : ''} supprimé${names.length > 1 ? 's' : ''}`, 'ok');
+      toast(tn(names.length, '{n} élément supprimé', '{n} éléments supprimés'), 'ok');
     } catch (e) { errToast(e); }
     this.setLoading(false);
     this.clearSel();
@@ -595,8 +597,8 @@ export class Pane {
     const boxes = [];
     const octIn = h('input', { value: octal(mode), inputmode: 'numeric', maxlength: 4, style: { fontFamily: 'ui-monospace, monospace' } });
     const sync = () => { octIn.value = octal(mode); boxes.forEach((b) => { b.checked = !!(mode & b.bit); }); };
-    const grid = h('div.perm-grid', h('span'), h('span.h', 'Lecture'), h('span.h', 'Écriture'), h('span.h', 'Exécution'),
-      [['Propriétaire', 6], ['Groupe', 3], ['Autres', 0]].map(([label, sh]) => [h('span.r', label), [4, 2, 1].map((b) => {
+    const grid = h('div.perm-grid', h('span'), h('span.h', t('Lecture')), h('span.h', t('Écriture')), h('span.h', t('Exécution')),
+      [[t('Propriétaire'), 6], [t('Groupe'), 3], [t('Autres'), 0]].map(([label, sh]) => [h('span.r', label), [4, 2, 1].map((b) => {
         const inp = h('input', { type: 'checkbox', onchange: () => { mode = inp.checked ? mode | inp.bit : mode & ~inp.bit; sync(); } });
         inp.bit = b << sh;
         boxes.push(inp);
@@ -605,15 +607,15 @@ export class Pane {
     octIn.addEventListener('input', () => { if (/^[0-7]{3,4}$/.test(octIn.value)) { mode = parseInt(octIn.value, 8); boxes.forEach((b) => { b.checked = !!(mode & b.bit); }); } });
     sync();
     const s = sheet({
-      title: `Permissions${names.length > 1 ? ` (${names.length} éléments)` : ''}`,
-      body: h('div.form', names.length === 1 ? h('p.muted', { style: { margin: 0 } }, names[0]) : null, grid, h('label.field', h('span', 'Valeur octale'), octIn),
-        h('p.muted', { style: { margin: 0, fontSize: '13px' } }, 'Appliqué aux éléments sélectionnés uniquement (non récursif).')),
-      foot: [h('button.btn', { onclick: () => s.close() }, 'Annuler'), h('button.btn.primary', {
+      title: names.length > 1 ? t('Permissions ({n} éléments)', { n: names.length }) : t('Permissions'),
+      body: h('div.form', names.length === 1 ? h('p.muted', { style: { margin: 0 } }, names[0]) : null, grid, h('label.field', h('span', t('Valeur octale')), octIn),
+        h('p.muted', { style: { margin: 0, fontSize: '13px' } }, t('Appliqué aux éléments sélectionnés uniquement (non récursif).'))),
+      foot: [h('button.btn', { onclick: () => s.close() }, t('Annuler')), h('button.btn.primary', {
         onclick: async () => {
           s.close();
-          try { await post(`${this.base()}/chmod`, { paths: names.map((n) => pjoin(this.path, n)), mode: octal(mode) }); toast('Permissions modifiées', 'ok'); this.refresh(); } catch (e) { errToast(e); }
+          try { await post(`${this.base()}/chmod`, { paths: names.map((n) => pjoin(this.path, n)), mode: octal(mode) }); toast(t('Permissions modifiées'), 'ok'); this.refresh(); } catch (e) { errToast(e); }
         },
-      }, 'Appliquer')],
+      }, t('Appliquer'))],
     });
   }
 
@@ -627,14 +629,14 @@ export class Pane {
 
   toDevice(names) {
     const files = names.filter((n) => this.entry(n)?.type === 'file');
-    if (!files.length) return toast('Seuls les fichiers peuvent être téléchargés sur l\'appareil. Pour un dossier, transférez-le.', 'err');
+    if (!files.length) return toast(t("Seuls les fichiers peuvent être téléchargés sur l'appareil. Pour un dossier, transférez-le."), 'err');
     files.forEach((n, i) => setTimeout(() => downloadUrl(this.fileUrl(pjoin(this.path, n))), i * 400));
-    if (files.length < names.length) toast('Les dossiers ont été ignorés');
+    if (files.length < names.length) toast(t('Les dossiers ont été ignorés'));
   }
 
   copyPath(name) {
     const p = pjoin(this.path, name);
-    navigator.clipboard?.writeText(p).then(() => toast('Chemin copié'), () => toast(p));
+    navigator.clipboard?.writeText(p).then(() => toast(t('Chemin copié')), () => toast(p));
   }
 
   // ---------- Menus ----------
@@ -643,22 +645,22 @@ export class Pane {
     if (!en) return;
     const isDir = en.type === 'dir';
     const canXfer = this.other.ready;
-    const t = isDir ? 'dir' : ftype(name);
-    const header = h('div.menu-head', h('span.ic', { class: `ic${isDir ? ' dir' : ''}` }, icon(isDir ? 'folder' : typeIcon(t))),
+    const kind = isDir ? 'dir' : ftype(name);
+    const header = h('div.menu-head', h('span.ic', { class: `ic${isDir ? ' dir' : ''}` }, icon(isDir ? 'folder' : typeIcon(kind))),
       h('div', { style: { minWidth: 0 } }, h('b', name), h('small', isDir ? date(en.mtime, true) : `${size(en.size)} · ${date(en.mtime, true)}`)));
     menu([
-      isDir ? { label: 'Ouvrir', icon: 'folder', action: () => this.open(name) } : null,
-      { label: this.isLocal ? 'Envoyer sur le serveur' : 'Télécharger en local', icon: this.isLocal ? 'send' : 'receive', primary: true, disabled: !canXfer, action: () => this.app.transfer(this, [name]) },
-      !isDir && previewable(name, en.size) ? { label: 'Aperçu', icon: 'eye', action: () => this.preview(name) } : null,
-      !isDir ? { label: "Enregistrer sur l'appareil", icon: 'phone', action: () => this.toDevice([name]) } : null,
+      isDir ? { label: t('Ouvrir'), icon: 'folder', action: () => this.open(name) } : null,
+      { label: this.isLocal ? t('Envoyer sur le serveur') : t('Télécharger en local'), icon: this.isLocal ? 'send' : 'receive', primary: true, disabled: !canXfer, action: () => this.app.transfer(this, [name]) },
+      !isDir && previewable(name, en.size) ? { label: t('Aperçu'), icon: 'eye', action: () => this.preview(name) } : null,
+      !isDir ? { label: t("Enregistrer sur l'appareil"), icon: 'phone', action: () => this.toDevice([name]) } : null,
       '-',
-      { label: 'Renommer', icon: 'edit', action: () => this.rename(name) },
-      { label: 'Déplacer…', icon: 'receive', action: () => this.move([name]) },
-      { label: 'Permissions', icon: 'lock', action: () => this.chmod([name]) },
-      { label: 'Copier le chemin', icon: 'copy', action: () => this.copyPath(name) },
-      { label: 'Sélectionner', icon: 'selectall', action: () => { this.selecting = true; this.setSel(new Set([...this.sel, name]), name); } },
+      { label: t('Renommer'), icon: 'edit', action: () => this.rename(name) },
+      { label: t('Déplacer…'), icon: 'receive', action: () => this.move([name]) },
+      { label: t('Permissions'), icon: 'lock', action: () => this.chmod([name]) },
+      { label: t('Copier le chemin'), icon: 'copy', action: () => this.copyPath(name) },
+      { label: t('Sélectionner'), icon: 'selectall', action: () => { this.selecting = true; this.setSel(new Set([...this.sel, name]), name); } },
       '-',
-      { label: 'Supprimer', icon: 'trash', danger: true, action: () => this.remove([name]) },
+      { label: t('Supprimer'), icon: 'trash', danger: true, action: () => this.remove([name]) },
     ], { x: e && e.clientX, y: e && e.clientY, header });
   }
 
@@ -666,25 +668,25 @@ export class Pane {
     const r = e && e.currentTarget && e.currentTarget.getBoundingClientRect ? e.currentTarget.getBoundingClientRect() : null;
     const x = e && e.type === 'contextmenu' ? e.clientX : r ? r.right - 230 : undefined;
     const y = e && e.type === 'contextmenu' ? e.clientY : r ? r.bottom + 4 : undefined;
-    const sortItem = (key, label) => ({ label: `${this.sort.key === key ? '✓ ' : ''}Trier par ${label}`, icon: 'sort', action: () => this.setSort(key, this.sort.key === key ? this.sort.dir : (key === 'name' ? 1 : -1)) });
+    const sortItem = (key, label) => ({ label: `${this.sort.key === key ? '✓ ' : ''}${label}`, icon: 'sort', action: () => this.setSort(key, this.sort.key === key ? this.sort.dir : (key === 'name' ? 1 : -1)) });
     menu([
-      this.ready ? { label: 'Nouveau dossier', icon: 'newfolder', action: () => this.mkdir() } : null,
-      this.ready ? { label: "Envoyer des fichiers depuis l'appareil", icon: 'upload', action: () => this.app.pickDeviceFiles(this) } : null,
-      this.ready ? { label: "Envoyer un dossier depuis l'appareil", icon: 'folder', action: () => this.app.pickDeviceFiles(this, true) } : null,
-      this.ready ? { label: 'Aller à…', icon: 'chev', action: () => this.goto() } : null,
-      this.ready ? { label: this.isLocal ? 'Dossier local du site' : 'Dossier personnel', icon: 'home', action: () => this.home() } : null,
-      this.ready && this.entries.length ? { label: 'Tout sélectionner', icon: 'selectall', action: () => this.selectAll() } : null,
+      this.ready ? { label: t('Nouveau dossier'), icon: 'newfolder', action: () => this.mkdir() } : null,
+      this.ready ? { label: t("Envoyer des fichiers depuis l'appareil"), icon: 'upload', action: () => this.app.pickDeviceFiles(this) } : null,
+      this.ready ? { label: t("Envoyer un dossier depuis l'appareil"), icon: 'folder', action: () => this.app.pickDeviceFiles(this, true) } : null,
+      this.ready ? { label: t('Aller à…'), icon: 'chev', action: () => this.goto() } : null,
+      this.ready ? { label: this.isLocal ? t('Dossier local du site') : t('Dossier personnel'), icon: 'home', action: () => this.home() } : null,
+      this.ready && this.entries.length ? { label: t('Tout sélectionner'), icon: 'selectall', action: () => this.selectAll() } : null,
       '-',
-      sortItem('name', 'nom'), sortItem('size', 'taille'), sortItem('mtime', 'date'),
-      { label: this.sort.dir > 0 ? 'Ordre décroissant' : 'Ordre croissant', icon: 'sort', action: () => this.setSort(this.sort.key, -this.sort.dir) },
-      { label: this.showHidden ? 'Masquer les fichiers cachés' : 'Afficher les fichiers cachés', icon: 'eye', action: () => { this.showHidden = !this.showHidden; this.savePrefs(); this.renderList(); } },
+      sortItem('name', t('Trier par nom')), sortItem('size', t('Trier par taille')), sortItem('mtime', t('Trier par date')),
+      { label: this.sort.dir > 0 ? t('Ordre décroissant') : t('Ordre croissant'), icon: 'sort', action: () => this.setSort(this.sort.key, -this.sort.dir) },
+      { label: this.showHidden ? t('Masquer les fichiers cachés') : t('Afficher les fichiers cachés'), icon: 'eye', action: () => { this.showHidden = !this.showHidden; this.savePrefs(); this.renderList(); } },
       !this.isLocal && this.app.connected ? '-' : null,
-      !this.isLocal && this.app.connected ? { label: 'Se déconnecter', icon: 'logout', danger: true, action: () => this.app.disconnect() } : null,
+      !this.isLocal && this.app.connected ? { label: t('Se déconnecter'), icon: 'logout', danger: true, action: () => this.app.disconnect() } : null,
     ], { x, y });
   }
 
   async goto() {
-    const p = await prompt({ title: 'Aller à', label: 'Chemin', value: this.path, ok: 'Ouvrir', validate: (v) => (!v.startsWith('/') ? 'Chemin absolu requis' : null) });
+    const p = await prompt({ title: t('Aller à'), label: t('Chemin'), value: this.path, ok: t('Ouvrir'), validate: (v) => (!v.startsWith('/') ? t('Chemin absolu requis') : null) });
     if (p) this.load(p);
   }
 
@@ -695,9 +697,9 @@ export class Pane {
 }
 
 function validName(v) {
-  if (!v) return 'Nom requis';
-  if (v.includes('/')) return 'Le nom ne peut pas contenir « / »';
-  if (v === '.' || v === '..') return 'Nom invalide';
+  if (!v) return t('Nom requis');
+  if (v.includes('/')) return t('Le nom ne peut pas contenir « / »');
+  if (v === '.' || v === '..') return t('Nom invalide');
   return null;
 }
 

@@ -6,6 +6,7 @@ const path = require('path').posix;
 const { Client } = require('ssh2');
 const { HttpError } = require('./localfs');
 const { decrypt } = require('./crypto');
+const { tr } = require('./i18n');
 
 const IDLE_MS = 10 * 60 * 1000;
 
@@ -17,18 +18,21 @@ function keyType(keyBuf) {
   try {
     const len = keyBuf.readUInt32BE(0);
     return keyBuf.subarray(4, 4 + len).toString('ascii');
-  } catch { return 'inconnu'; }
+  } catch { return tr('inconnu'); }
 }
+
+// Préfixe « chemin : » des messages d'erreur (deux-points à la française ou à l'anglaise).
+const prefix = (what) => (what ? tr('{path} : {error}', { path: what, error: '' }) : '');
 
 function sftpErr(e, what) {
   if (e instanceof HttpError) return e;
   const code = e && e.code;
-  if (code === 2) return new HttpError(404, `${what ? what + ' : ' : ''}fichier ou dossier introuvable`, 'ENOENT');
-  if (code === 3) return new HttpError(403, `${what ? what + ' : ' : ''}permission refusée`, 'EACCES');
-  if (code === 4) return new HttpError(500, `${what ? what + ' : ' : ''}échec côté serveur (${e.message})`, 'FAILURE');
-  if (e && e.level === 'client-authentication') return new HttpError(401, 'Authentification refusée par le serveur', 'AUTH');
-  if (e && e.level === 'client-timeout') return new HttpError(504, 'Délai de connexion dépassé', 'TIMEOUT');
-  const net = { ECONNREFUSED: 'Connexion refusée', ENOTFOUND: 'Hôte introuvable', EHOSTUNREACH: 'Hôte injoignable', ETIMEDOUT: 'Délai dépassé', ECONNRESET: 'Connexion réinitialisée' };
+  if (code === 2) return new HttpError(404, tr('{what}fichier ou dossier introuvable', { what: prefix(what) }), 'ENOENT');
+  if (code === 3) return new HttpError(403, tr('{what}permission refusée', { what: prefix(what) }), 'EACCES');
+  if (code === 4) return new HttpError(500, tr('{what}échec côté serveur ({error})', { what: prefix(what), error: e.message }), 'FAILURE');
+  if (e && e.level === 'client-authentication') return new HttpError(401, tr('Authentification refusée par le serveur'), 'AUTH');
+  if (e && e.level === 'client-timeout') return new HttpError(504, tr('Délai de connexion dépassé'), 'TIMEOUT');
+  const net = { ECONNREFUSED: tr('Connexion refusée'), ENOTFOUND: tr('Hôte introuvable'), EHOSTUNREACH: tr('Hôte injoignable'), ETIMEDOUT: tr('Délai dépassé'), ECONNRESET: tr('Connexion réinitialisée') };
   if (net[code]) return new HttpError(502, net[code], code);
   return new HttpError(500, (e && e.message) || String(e), code);
 }
@@ -58,7 +62,7 @@ class SiteConn {
 
   _connect() {
     const site = this.manager.getSite(this.siteId);
-    if (!site) throw new HttpError(404, 'Site inconnu');
+    if (!site) throw new HttpError(404, tr('Site inconnu'));
     return new Promise((resolve, reject) => {
       const c = new Client();
       let seen = null;
@@ -93,7 +97,7 @@ class SiteConn {
           cfg.tryKeyboard = true;
         }
       } catch (e) {
-        return reject(new HttpError(500, `Impossible de déchiffrer les identifiants : ${e.message}`));
+        return reject(new HttpError(500, tr('Impossible de déchiffrer les identifiants : {error}', { error: e.message })));
       }
       c.on('keyboard-interactive', (_n, _i, _l, prompts, finish) => {
         finish(prompts.map(() => cfg.password || ''));
@@ -116,12 +120,12 @@ class SiteConn {
       c.on('error', (err) => {
         if (!settled) {
           if (seen && site.hostKey && site.hostKey !== seen.fingerprint) {
-            const e = new HttpError(409, "La clé d'hôte du serveur a changé !", 'HOSTKEY_MISMATCH');
+            const e = new HttpError(409, tr("La clé d'hôte du serveur a changé !"), 'HOSTKEY_MISMATCH');
             e.data = { ...seen, known: site.hostKey };
             return fail(e);
           }
           if (seen && !site.hostKey) {
-            const e = new HttpError(409, "Clé d'hôte inconnue", 'HOSTKEY_UNKNOWN');
+            const e = new HttpError(409, tr("Clé d'hôte inconnue"), 'HOSTKEY_UNKNOWN');
             e.data = seen;
             return fail(e);
           }
@@ -210,14 +214,14 @@ class SiteConn {
       cur = cur === '' ? '/' + part : cur + '/' + part;
       const st = await p((cb) => sftp.stat(cur, cb)).catch(() => null);
       if (st && st.isDirectory()) continue;
-      if (st) throw new HttpError(409, `${cur} existe et n'est pas un dossier`);
+      if (st) throw new HttpError(409, tr("{path} existe et n'est pas un dossier", { path: cur }));
       await p((cb) => sftp.mkdir(cur, cb)).catch((e) => { throw sftpErr(e, cur); });
     }
   }
 
   async rename(from, to) {
     const sftp = await this.sftp();
-    if (await this.exists(to)) throw new HttpError(409, 'La destination existe déjà');
+    if (await this.exists(to)) throw new HttpError(409, tr('La destination existe déjà'));
     await p((cb) => sftp.rename(from, to, cb)).catch((e) => { throw sftpErr(e, from); });
   }
 

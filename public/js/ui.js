@@ -1,5 +1,6 @@
 // Composants d'interface : toasts, feuilles (bottom sheets), menus, dialogues, visionneuse.
 import { h, icon, $, isWide } from './util.js';
+import { t } from './i18n.js';
 
 const layer = () => $('#layer');
 
@@ -37,7 +38,7 @@ export function sheet({ title, body, foot, wide = false, onClose, headExtra }) {
   const box = h('div.sheet', { class: `sheet${wide ? ' wide' : ''}`, role: 'dialog', 'aria-modal': 'true' },
     h('div.grab'),
     h('div.sheet-head', h('h2', title || ''), headExtra || null,
-      h('button.icon-btn', { 'aria-label': 'Fermer', onclick: () => api.close() }, icon('x'))),
+      h('button.icon-btn', { 'aria-label': t('Fermer'), onclick: () => api.close() }, icon('x'))),
     h('div.sheet-body', body),
     foot ? h('div.sheet-foot', foot) : null);
   let closed = false;
@@ -117,7 +118,7 @@ export function menu(items, { x, y, header } = {}) {
   s.el.querySelector('.sheet-head').style.display = isWide() ? '' : 'none';
 }
 
-export function confirm({ title, message, ok = 'Confirmer', danger = false, cancel = 'Annuler' }) {
+export function confirm({ title, message, ok = t('Confirmer'), danger = false, cancel = t('Annuler') }) {
   return new Promise((resolve) => {
     let done = false;
     const finish = (v) => { if (!done) { done = true; resolve(v); s.close(); } };
@@ -141,14 +142,14 @@ export function prompt({ title, label, value = '', ok = 'OK', placeholder = '', 
     const submit = (e) => {
       e && e.preventDefault();
       const v = input.value.trim();
-      const msg = validate ? validate(v) : (!v ? 'Valeur requise' : null);
+      const msg = validate ? validate(v) : (!v ? t('Valeur requise') : null);
       if (msg) { err.textContent = msg; err.hidden = false; return; }
       done = true; resolve(v); s.close();
     };
     const form = h('form.form', { onsubmit: submit }, h('label.field', h('span', label || ''), input), err);
     const s = sheet({
       title, body: form,
-      foot: [h('button.btn', { onclick: () => s.close() }, 'Annuler'), h('button.btn.primary', { onclick: submit }, ok)],
+      foot: [h('button.btn', { onclick: () => s.close() }, t('Annuler')), h('button.btn.primary', { onclick: submit }, ok)],
       onClose: () => { if (!done) resolve(null); },
     });
     setTimeout(() => {
@@ -159,7 +160,7 @@ export function prompt({ title, label, value = '', ok = 'OK', placeholder = '', 
 }
 
 // Choix parmi des options (liste de boutons radio).
-export function choose({ title, message, options, ok = 'Continuer', value }) {
+export function choose({ title, message, options, ok = t('Continuer'), value }) {
   return new Promise((resolve) => {
     let done = false;
     let cur = value || options[0].value;
@@ -169,7 +170,7 @@ export function choose({ title, message, options, ok = 'Continuer', value }) {
     const s = sheet({
       title,
       body: h('div.form', message ? h('p', { style: { margin: 0 } }, message) : null, h('div', items)),
-      foot: [h('button.btn', { onclick: () => s.close() }, 'Annuler'), h('button.btn.primary', { onclick: () => { done = true; resolve(cur); s.close(); } }, ok)],
+      foot: [h('button.btn', { onclick: () => s.close() }, t('Annuler')), h('button.btn.primary', { onclick: () => { done = true; resolve(cur); s.close(); } }, ok)],
       onClose: () => { if (!done) resolve(null); },
     });
   });
@@ -180,8 +181,8 @@ export function viewer({ name, url, kind, download }) {
   const body = h('div.viewer-body');
   const v = h('div.viewer',
     h('div.viewer-head', h('b', name),
-      download ? h('button.icon-btn', { 'aria-label': 'Télécharger', onclick: download }, icon('download')) : null,
-      h('button.icon-btn', { 'aria-label': 'Fermer', onclick: () => entry.close() }, icon('x'))),
+      download ? h('button.icon-btn', { 'aria-label': t('Télécharger'), onclick: download }, icon('download')) : null,
+      h('button.icon-btn', { 'aria-label': t('Fermer'), onclick: () => entry.close() }, icon('x'))),
     body);
   let closed = false;
   const entry = {
@@ -197,7 +198,7 @@ export function viewer({ name, url, kind, download }) {
   else if (kind === 'audio') body.append(h('audio', { src: url, controls: true, autoplay: true }));
   else if (kind === 'pdf') body.append(h('iframe', { src: url, title: name }));
   else {
-    const pre = h('pre', 'Chargement…');
+    const pre = h('pre', t('Chargement…'));
     body.append(pre);
     fetch(url).then((r) => r.text()).then((t) => { pre.textContent = t; }).catch((e) => { pre.textContent = e.message; });
   }
