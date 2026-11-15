@@ -1,197 +1,197 @@
 # SFTPad
 
-🇫🇷 Français · [🇬🇧 English](README.en.md)
+🇬🇧 English · [🇫🇷 Français](README.fr.md)
 
-Client **SFTP web, tactile et installable (PWA)**, inspiré de FileZilla, pour usage personnel. Il tourne sur un serveur
-(Docker sur Unraid, LXC Proxmox ou tout hôte Docker) : le côté « local » est le **stockage monté** dans le conteneur
-(NAS, disque, partages), le côté « distant » est votre serveur SFTP. Les transferts sont exécutés **par le serveur** : ils continuent
-même si vous fermez l'onglet ou verrouillez le téléphone.
+A **touch-friendly, installable (PWA) web SFTP client** inspired by FileZilla, for personal use. It runs on a server
+(Docker on Unraid, a Proxmox LXC, or any Docker host): the "local" side is the **storage mounted** into the container
+(NAS, disk, shares), and the "remote" side is your SFTP server. Transfers are carried out **by the server**: they keep going
+even if you close the tab or lock your phone.
 
-![Bureau](docs/bureau.png)
+![Desktop](docs/bureau.png)
 ![Mobile](docs/mobile.png)
 
-## Fonctionnalités
+## Features
 
-- **Double panneau** local / distant sur grand écran, **onglets** sur mobile.
-- **Gestes tactiles** : toucher pour ouvrir, **appui long** pour sélectionner, **glisser à droite** pour transférer,
-  **glisser à gauche** pour le menu d'actions, glisser la feuille vers le bas pour la fermer, bouton « retour » d'Android.
-- **Souris et clavier** : clic, Ctrl/Maj+clic, double-clic (ouvrir / transférer), clic droit, **glisser-déposer**
-  entre panneaux, dans un dossier ou depuis le bureau de l'ordinateur, raccourcis `Suppr`, `F2`, `F5`, `Entrée`,
-  `Retour arrière`, `Ctrl+A`, flèches, `Tab` pour changer de panneau.
-- **File de transferts persistante** (`/config/queue.json`) : dossiers récursifs, transferts simultanés réglables,
-  pause, annulation, nouvel essai, **reprise des fichiers partiels**, **nouvel essai automatique** en cas de coupure
-  réseau, conservation des dates de modification, anti-doublon.
-- **Si le fichier existe** : reprendre ou ignorer si identique (défaut), écraser, écraser si plus récent, ignorer, renommer.
-- **Gestionnaire de sites** : mot de passe ou **clé SSH** (import, collage ou **génération ed25519** avec la clé publique
-  à copier), dossiers par défaut, couleur. Secrets **chiffrés AES-256-GCM** au repos.
-- **Vérification de la clé d'hôte** comme FileZilla : empreinte SHA256 à approuver à la première connexion,
-  alerte en cas de changement.
-- **Depuis / vers l'appareil** : envoi de fichiers ou de dossiers depuis le téléphone ou l'ordinateur (vers le local
-  ou directement vers le serveur), téléchargement sur l'appareil, **aperçu** des images, vidéos (avec avance rapide),
-  audio, PDF et textes.
-- Renommer, déplacer, supprimer (récursif), créer un dossier, **permissions (chmod)**, filtre, tri, fichiers cachés,
-  thème clair / sombre / auto.
-- Interface en **français et en anglais** : langue du navigateur par défaut, modifiable dans **Réglages → Langue**.
-- Authentification intégrée (mot de passe haché scrypt, sessions de 30 jours, anti force brute), ou déléguée
-  à votre reverse proxy (`AUTH=none`).
+- **Dual pane** local / remote on large screens, **tabs** on mobile.
+- **Touch gestures**: tap to open, **long press** to select, **swipe right** to transfer,
+  **swipe left** for the actions menu, drag the sheet down to close it, Android "back" button.
+- **Mouse and keyboard**: click, Ctrl/Shift+click, double-click (open / transfer), right-click, **drag and drop**
+  between panes, into a folder, or from the computer's desktop, shortcuts `Del`, `F2`, `F5`, `Enter`,
+  `Backspace`, `Ctrl+A`, arrow keys, `Tab` to switch panes.
+- **Persistent transfer queue** (`/config/queue.json`): recursive folders, adjustable concurrent transfers,
+  pause, cancel, retry, **resuming of partial files**, **automatic retry** on network
+  interruption, modification dates preserved, duplicate prevention.
+- **If the file exists**: resume or skip if identical (default), overwrite, overwrite if newer, skip, rename.
+- **Site manager**: password or **SSH key** (import, paste, or **ed25519 generation** with the public key
+  ready to copy), default folders, color. Secrets are **AES-256-GCM encrypted** at rest.
+- **Host key verification** like FileZilla: SHA256 fingerprint to approve on first connection,
+  warning if it changes.
+- **From / to the device**: upload files or folders from your phone or computer (to the local side
+  or straight to the server), download to the device, **preview** of images, videos (with seeking),
+  audio, PDFs and text files.
+- Rename, move, delete (recursive), create folder, **permissions (chmod)**, filter, sort, hidden files,
+  light / dark / auto theme.
+- Interface in **French and English**: follows the browser language by default, can be changed under **Settings → Language**.
+- Built-in authentication (scrypt-hashed password, 30-day sessions, brute-force protection), or delegated
+  to your reverse proxy (`AUTH=none`).
 
 ## Installation
 
 ### Unraid (Docker)
 
-L'image est publiée automatiquement sur GitHub Container Registry : **`ghcr.io/yogui26/sftpad:latest`** (amd64 et arm64),
-reconstruite à chaque modification de la branche `main` (workflow `.github/workflows/docker.yml`).
+The image is published automatically to GitHub Container Registry: **`ghcr.io/yogui26/sftpad:latest`** (amd64 and arm64),
+rebuilt on every change to the `main` branch (workflow `.github/workflows/docker.yml`).
 
-1. Dans le terminal d'Unraid, récupérez le modèle :
+1. In the Unraid terminal, fetch the template:
    ```bash
    wget -O /boot/config/plugins/dockerMan/templates-user/my-SFTPad.xml \
      https://raw.githubusercontent.com/Yogui26/sftpad/main/deploy/unraid/sftpad.xml
    ```
-2. Onglet **Docker → Add Container**, choisissez le modèle **SFTPad**, vérifiez les chemins, puis **Apply**.
+2. Go to **Docker → Add Container**, pick the **SFTPad** template, check the paths, then **Apply**.
 
-| Paramètre | Conteneur | Défaut | Rôle |
+| Setting | Container | Default | Purpose |
 |---|---|---|---|
-| Interface web | `8080` | `8080` | Port web |
-| Configuration | `/config` | `/mnt/user/appdata/sftpad` | Sites, secrets chiffrés, file |
-| Stockage local | `/data` | `/mnt/user` | Ce que SFTPad voit comme « local » |
-| PUID / PGID | | `99` / `100` | Propriétaire des fichiers écrits (nobody:users) |
-| UMASK | | `000` | Permissions des fichiers créés |
+| Web interface | `8080` | `8080` | Web port |
+| Configuration | `/config` | `/mnt/user/appdata/sftpad` | Sites, encrypted secrets, queue |
+| Local storage | `/data` | `/mnt/user` | What SFTPad sees as "local" |
+| PUID / PGID | | `99` / `100` | Owner of written files (nobody:users) |
+| UMASK | | `000` | Permissions of created files |
 
-Les mises à jour apparaissent ensuite dans l'onglet Docker d'Unraid comme pour n'importe quel conteneur.
+Updates then show up in Unraid's Docker tab, as with any other container.
 
-Construire l'image soi-même reste possible : `docker build -t sftpad:latest .` dans ce dossier, puis remplacer
-le dépôt du modèle par `sftpad:latest`.
+You can still build the image yourself: run `docker build -t sftpad:latest .` in this folder, then replace
+the template's repository with `sftpad:latest`.
 
-### Tout hôte Docker (docker compose)
+### Any Docker host (docker compose)
 
 ```bash
 docker compose up -d --build
 ```
 
-Adaptez `docker-compose.yml` : le volume `/data`, `PUID`/`PGID` (le propriétaire voulu pour les fichiers téléchargés).
+Adjust `docker-compose.yml`: the `/data` volume and `PUID`/`PGID` (the owner you want for downloaded files).
 
-### Proxmox — LXC sans Docker
+### Proxmox — LXC without Docker
 
-Sur l'hôte Proxmox, depuis ce dossier :
+On the Proxmox host, from this folder:
 
 ```bash
-DATA_HOST_PATH=/tank/partage bash deploy/proxmox/create-lxc.sh
+DATA_HOST_PATH=/tank/share bash deploy/proxmox/create-lxc.sh
 ```
 
-Le script télécharge le modèle Debian 12, crée un conteneur **non privilégié** (512 Mo, 4 Go, démarrage automatique),
-monte `DATA_HOST_PATH` sur `/data`, installe Node.js 22 et SFTPad en **service systemd**, et affiche l'adresse.
-Variables utiles : `CTID`, `CT_HOSTNAME`, `STORAGE`, `BRIDGE`, `IP` (`dhcp` ou `192.168.1.50/24,gw=192.168.1.1`),
+The script downloads the Debian 12 template, creates an **unprivileged** container (512 MB RAM, 4 GB disk, start on boot),
+mounts `DATA_HOST_PATH` on `/data`, installs Node.js 22 and SFTPad as a **systemd service**, and prints the address.
+Useful variables: `CTID`, `CT_HOSTNAME`, `STORAGE`, `BRIDGE`, `IP` (`dhcp` or `192.168.1.50/24,gw=192.168.1.1`),
 `DISK`, `MEM`, `CORES`, `SFTPAD_UID`/`SFTPAD_GID`.
 
-> **Droits en conteneur non privilégié** : l'utilisateur `sftpad` (uid 1000) du conteneur correspond à l'uid **101000**
-> sur l'hôte. Pour qu'il puisse écrire dans le dossier monté : `chown -R 101000:101000 /tank/partage`, ou une ACL
-> `setfacl -R -m u:101000:rwX,d:u:101000:rwX /tank/partage`.
+> **Permissions in an unprivileged container**: the container's `sftpad` user (uid 1000) maps to uid **101000**
+> on the host. To let it write to the mounted folder: `chown -R 101000:101000 /tank/share`, or an ACL
+> `setfacl -R -m u:101000:rwX,d:u:101000:rwX /tank/share`.
 
-Mise à jour : `CTID=105 bash deploy/proxmox/update-lxc.sh` depuis la nouvelle version des sources.
+Updating: `CTID=105 bash deploy/proxmox/update-lxc.sh` from the new version of the sources.
 
-Dans un LXC ou une VM Debian/Ubuntu existants, lancez simplement `bash deploy/lxc/install.sh` en root depuis ce dossier
-(le script est idempotent : relancez-le pour mettre à jour). Configuration : `/etc/sftpad.env`, données : `/var/lib/sftpad`.
+In an existing Debian/Ubuntu LXC or VM, simply run `bash deploy/lxc/install.sh` as root from this folder
+(the script is idempotent: run it again to update). Configuration: `/etc/sftpad.env`, data: `/var/lib/sftpad`.
 
-Vous préférez Docker dans un LXC ? Créez un LXC avec `nesting=1`, installez Docker, puis suivez la section docker compose.
+Prefer Docker inside an LXC? Create an LXC with `nesting=1`, install Docker, then follow the docker compose section.
 
-## Configuration (variables d'environnement)
+## Configuration (environment variables)
 
-| Variable | Défaut | Description |
+| Variable | Default | Description |
 |---|---|---|
-| `PORT` | `8080` | Port HTTP |
-| `CONFIG_DIR` | `/config` | État de l'application (à sauvegarder) |
-| `DATA_DIR` | `/data` | Racine du côté « local » |
-| `ADMIN_PASSWORD` | | Mot de passe imposé (sinon choisi au premier lancement) |
-| `AUTH` | | `none` pour désactiver l'authentification intégrée (reverse proxy authentifiant obligatoire) |
-| `TRUST_PROXY` | réseaux privés | Réglage `trust proxy` d'Express, pour les adresses IP derrière un reverse proxy |
-| `PUID` / `PGID` / `UMASK` | `99` / `100` / `002` | Docker uniquement : utilisateur et masque des fichiers créés |
+| `PORT` | `8080` | HTTP port |
+| `CONFIG_DIR` | `/config` | Application state (back this up) |
+| `DATA_DIR` | `/data` | Root of the "local" side |
+| `ADMIN_PASSWORD` | | Enforced password (otherwise chosen on first launch) |
+| `AUTH` | | `none` to disable built-in authentication (an authenticating reverse proxy is then mandatory) |
+| `TRUST_PROXY` | private networks | Express `trust proxy` setting, for IP addresses behind a reverse proxy |
+| `PUID` / `PGID` / `UMASK` | `99` / `100` / `002` | Docker only: user and mask for created files |
 
-Réglages modifiables dans l'interface : transferts simultanés (1 à 10), comportement si le fichier existe, permissions des
-fichiers créés en local, thème, langue (par appareil).
+Settings that can be changed in the interface: concurrent transfers (1 to 10), behavior when the file exists, permissions of
+files created locally, theme, language (per device).
 
-## Accès distant et HTTPS
+## Remote access and HTTPS
 
-Pour installer la PWA sur un téléphone, le navigateur exige **HTTPS** (sauf `localhost`). Placez SFTPad derrière votre reverse proxy
-(Nginx Proxy Manager, SWAG, Traefik, Caddy…) avec le **WebSocket activé** (chemin `/ws`, utilisé pour la progression en direct). Exemple Caddy :
+To install the PWA on a phone, the browser requires **HTTPS** (except on `localhost`). Put SFTPad behind your reverse proxy
+(Nginx Proxy Manager, SWAG, Traefik, Caddy…) with **WebSocket enabled** (path `/ws`, used for live progress). Caddy example:
 
 ```
-sftp.mondomaine.fr {
+sftp.mydomain.com {
     reverse_proxy 192.168.1.20:8080
 }
 ```
 
-Pour de gros envois depuis l'appareil, augmentez la taille maximale du corps de requête du proxy (`client_max_body_size 0;` sur Nginx).
-Évitez d'exposer SFTPad directement sur Internet : il donne accès à vos fichiers et à vos serveurs. Un VPN (WireGuard, Tailscale)
-ou une authentification au niveau du proxy est recommandé.
+For large uploads from the device, raise the proxy's maximum request body size (`client_max_body_size 0;` on Nginx).
+Avoid exposing SFTPad directly to the Internet: it gives access to your files and your servers. A VPN (WireGuard, Tailscale)
+or proxy-level authentication is recommended.
 
-## Dépannage
+## Troubleshooting
 
-**« Écriture refusée » / `EACCES` en téléchargeant vers le local** : SFTPad écrit avec l'utilisateur `PUID:PGID`
-(99:100 = `nobody:users` sur Unraid). La racine de `/mnt/user` appartient à `root` : il faut entrer dans un
-**partage** avant de transférer. Si un partage refuse aussi l'écriture (créé par root), lancez
-**Tools → New Permissions** sur ce partage dans Unraid, ou corrigez `PUID`/`PGID`. L'utilisateur effectif
-s'affiche dans **Réglages → À propos**.
+**"Write denied" / `EACCES` when downloading to local**: SFTPad writes as the `PUID:PGID` user
+(99:100 = `nobody:users` on Unraid). The root of `/mnt/user` is owned by `root`: you need to enter a
+**share** before transferring. If a share also refuses writes (created by root), run
+**Tools → New Permissions** on that share in Unraid, or fix `PUID`/`PGID`. The effective user
+is shown under **Settings → About**.
 
-## Versions et retour en arrière
+## Versions and rollback
 
-Chaque image publiée reçoit plusieurs étiquettes :
+Every published image gets several tags:
 
-| Étiquette | Exemple | Évolue ? |
+| Tag | Example | Does it move? |
 |---|---|---|
-| `latest` | `ghcr.io/yogui26/sftpad:latest` | oui, toujours la dernière |
-| version | `:1.1.0` | non (version publiée) |
-| version mineure | `:1.1` | suit les correctifs 1.1.x |
-| commit | `:sha-af94d5c` | non |
-| date | `:2026-10-25` | dernière image construite ce jour-là |
+| `latest` | `ghcr.io/yogui26/sftpad:latest` | yes, always the newest |
+| version | `:1.1.0` | no (published version) |
+| minor version | `:1.1` | follows 1.1.x patch releases |
+| commit | `:sha-af94d5c` | no |
+| date | `:2026-10-25` | last image built that day |
 
-**Revenir à une version précédente sur Unraid** : Docker → SFTPad → **Edit** → champ **Repository**, remplacer
-`latest` par l'étiquette voulue (ex. `ghcr.io/yogui26/sftpad:1.1.0`), puis **Apply**. Pour revenir aux mises à jour
-automatiques, remettre `latest`. La liste des versions disponibles se trouve sur
-https://github.com/Yogui26/sftpad/pkgs/container/sftpad (une image sans étiquette s'utilise aussi par son
-empreinte : `ghcr.io/yogui26/sftpad@sha256:…`).
+**Rolling back to a previous version on Unraid**: Docker → SFTPad → **Edit** → **Repository** field, replace
+`latest` with the tag you want (e.g. `ghcr.io/yogui26/sftpad:1.1.0`), then **Apply**. To go back to automatic
+updates, put `latest` back. The list of available versions is at
+https://github.com/Yogui26/sftpad/pkgs/container/sftpad (an untagged image can also be used by its
+digest: `ghcr.io/yogui26/sftpad@sha256:…`).
 
-Les mises à jour ne modifient pas le format des fichiers de `/config` sans le signaler dans la note de version.
-Par prudence, sauvegardez `/mnt/user/appdata/sftpad` avant une mise à jour importante (plugin Appdata Backup).
+Updates do not change the format of the files in `/config` without saying so in the release notes.
+To be safe, back up `/mnt/user/appdata/sftpad` before a major update (Appdata Backup plugin).
 
-Publier une nouvelle version : modifier `version` dans `package.json` puis pousser sur `main` ; l'image reçoit
-automatiquement l'étiquette correspondante (ex. `1.2.0`), et GitHub Actions crée l'étiquette git `v1.2.0` ainsi qu'une
-release avec la liste des changements. La reconstruction hebdomadaire réapplique les correctifs
-système sous la même étiquette de version (même code, base à jour) ; pour figer exactement une image, utilisez
-l'étiquette `sha-…` ou l'empreinte `@sha256:…`.
+Publishing a new version: change `version` in `package.json` and push to `main`; the image automatically
+gets the matching tag (e.g. `1.2.0`), and GitHub Actions creates the git tag `v1.2.0` along with a
+release listing the changes. The weekly rebuild reapplies system
+patches under the same version tag (same code, up-to-date base); to pin an exact image, use
+the `sha-…` tag or the `@sha256:…` digest.
 
-## Sauvegarde
+## Backup
 
-Tout l'état est dans `/config` : `sites.json` (secrets chiffrés), `secret.key` (clé de chiffrement — **sans elle les mots de passe
-enregistrés sont perdus**), `config.json`, `queue.json`, `sessions.json`.
+All state lives in `/config`: `sites.json` (encrypted secrets), `secret.key` (encryption key — **without it, saved passwords
+are lost**), `config.json`, `queue.json`, `sessions.json`.
 
-## Différences avec FileZilla
+## Differences from FileZilla
 
-- SFTP uniquement (pas de FTP/FTPS).
-- Le « local » est le stockage du serveur où tourne SFTPad, pas l'ordinateur du navigateur ; l'appareil reste accessible
-  par l'envoi et le téléchargement direct.
-- Un site affiché à la fois (bascule rapide via le gestionnaire), pas d'onglets de connexion multiples.
-- Les dossiers ne se téléchargent pas directement sur l'appareil (transférez-les vers le local, ou fichier par fichier).
-- Pas d'édition de fichier distant en place, pas de comparaison de dossiers ni de synchronisation.
-- Les liens symboliques du stockage local sont suivis (pratique pour des points de montage, mais ils peuvent pointer hors de `/data`).
+- SFTP only (no FTP/FTPS).
+- "Local" is the storage of the server SFTPad runs on, not the computer running the browser; the device remains reachable
+  through direct upload and download.
+- One site shown at a time (quick switching via the site manager), no multiple connection tabs.
+- Folders cannot be downloaded directly to the device (transfer them to local, or download file by file).
+- No in-place editing of remote files, no folder comparison or synchronization.
+- Symbolic links in local storage are followed (handy for mount points, but they can point outside `/data`).
 
-## Développement
+## Development
 
 ```bash
 npm install
 CONFIG_DIR=./config DATA_DIR=./data npm start   # http://localhost:8080
 ```
 
-Aucune étape de compilation : backend Node.js (Express 5, ssh2, ws), interface en JavaScript natif (modules ES).
+No build step: Node.js backend (Express 5, ssh2, ws), vanilla JavaScript interface (ES modules).
 
-Traductions : les textes français servent de clés (`t('Annuler')`), les équivalents anglais sont dans
-`public/js/i18n.js` (interface) et `server/i18n.js` (messages d'erreur du serveur).
+Translations: the French strings are the keys (`t('Annuler')`); their English equivalents live in
+`public/js/i18n.js` (interface) and `server/i18n.js` (server error messages).
 
 ```
-server/   index.js (API, auth, WebSocket) · sftp.js (connexions, clés d'hôte) · transfers.js (file) ·
-          fastio.js (E/S SFTP en pipeline avec reprise) · localfs.js (stockage local) · crypto.js · store.js ·
-          i18n.js (messages d'erreur fr/en)
+server/   index.js (API, auth, WebSocket) · sftp.js (connections, host keys) · transfers.js (queue) ·
+          fastio.js (pipelined SFTP I/O with resume) · localfs.js (local storage) · crypto.js · store.js ·
+          i18n.js (fr/en error messages)
 public/   index.html · style.css · app.js · js/ (pane, queue, sites, ui, api, util, i18n) · sw.js · manifest
 deploy/   docker/ · unraid/ · lxc/ · proxmox/
 ```
 
-Licence GPL-3.0-or-later.
+License: GPL-3.0-or-later.
