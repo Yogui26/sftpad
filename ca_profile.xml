@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CommunityApplications>
+  <Profile>
+    Home of SFTPad, a touch-friendly, installable (PWA) web SFTP client inspired by FileZilla. It runs on your Unraid server: the "local" side is the storage mounted into the container (your shares), the "remote" side is your SFTP server, and transfers are carried out by the server, so they keep going when you close the tab or lock your phone. The interface is available in English and French. This repository contains the application source code and its Unraid Docker template. For support, bug reports and feature requests, please open an issue on GitHub: https://github.com/Yogui26/sftpad/issues
+  </Profile>
+  <Icon>https://raw.githubusercontent.com/Yogui26/sftpad/main/public/icons/icon-512.png</Icon>
+  <WebPage>https://github.com/Yogui26/sftpad</WebPage>
+</CommunityApplications>

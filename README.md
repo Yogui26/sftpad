@@ -51,7 +51,7 @@ rebuilt on every change to the `main` branch (workflow `.github/workflows/docker
 
 | Setting | Container | Default | Purpose |
 |---|---|---|---|
-| Web interface | `8080` | `8080` | Web port |
+| Web UI | `8080` | `8080` | Web port |
 | Configuration | `/config` | `/mnt/user/appdata/sftpad` | Sites, encrypted secrets, queue |
 | Local storage | `/data` | `/mnt/user` | What SFTPad sees as "local" |
 | PUID / PGID | | `99` / `100` | Owner of written files (nobody:users) |

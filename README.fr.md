@@ -51,9 +51,9 @@ reconstruite à chaque modification de la branche `main` (workflow `.github/work
 
 | Paramètre | Conteneur | Défaut | Rôle |
 |---|---|---|---|
-| Interface web | `8080` | `8080` | Port web |
+| Web UI | `8080` | `8080` | Port web |
 | Configuration | `/config` | `/mnt/user/appdata/sftpad` | Sites, secrets chiffrés, file |
-| Stockage local | `/data` | `/mnt/user` | Ce que SFTPad voit comme « local » |
+| Local storage | `/data` | `/mnt/user` | Ce que SFTPad voit comme « local » |
 | PUID / PGID | | `99` / `100` | Propriétaire des fichiers écrits (nobody:users) |
 | UMASK | | `000` | Permissions des fichiers créés |
 
